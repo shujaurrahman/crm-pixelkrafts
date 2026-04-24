@@ -35,11 +35,14 @@ function isVercelRuntime() {
 
 function ensurePersistentBackendConfigured() {
   if (hasVercelBlobToken() || hasAzureConnection()) return;
-  if (!isVercelRuntime()) return;
-
-  throw new Error(
-    'No persistent storage backend is configured on Vercel. Set BLOB_READ_WRITE_TOKEN (or VERCEL_BLOB_READ_WRITE_TOKEN) or AZURE_STORAGE_CONNECTION_STRING.',
-  );
+  
+  if (isVercelRuntime()) {
+    console.warn(
+      'CRM Storage Warning: No persistent storage backend (Vercel Blob or Azure) configured. ' +
+      'Data will be stored in temporary local storage and will be lost on the next deployment. ' +
+      'Please ensure BLOB_READ_WRITE_TOKEN is set in your Vercel Project Settings.'
+    );
+  }
 }
 
 export async function readJsonBlob<T>(blobName: string, fallback: T): Promise<T> {
