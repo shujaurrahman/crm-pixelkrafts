@@ -1,0 +1,37 @@
+[
+  {
+    "id": "ENQ-0001",
+    "date": "2026-04-25",
+    "clientName": "Future Tech Systems",
+    "email": "contact@futuretech.com",
+    "phone": "+91 99887 76655",
+    "country": "India",
+    "state": "Karnataka",
+    "city": "Bangalore",
+    "clientType": "Enterprise",
+    "brand": "Development",
+    "productCategory": "Website Development",
+    "productName": "React Next.js Website",
+    "owner": "Shuja",
+    "status": "Quote Sent",
+    "priority": "High",
+    "expectedValue": 500000,
+    "quantity": 1,
+    "poNumber": "",
+    "closurePercent": 20,
+    "orderExpectedDate": "2026-06-01",
+    "orderExecutionBy": "Dev Team",
+    "deliveryTarget": "Go-live by June 15th",
+    "notes": "Initial inquiry for a corporate website redesign and migration to Next.js.",
+    "images": [],
+    "createdAt": "2026-04-25T00:00:00.000Z",
+    "enquiryItems": [
+      {
+        "brand": "Development",
+        "productCategory": "Website Development",
+        "productName": "React Next.js Website"
+      }
+    ],
+    "lastQuoteDate": "2026-04-24T20:07:35.271Z"
+  }
+]

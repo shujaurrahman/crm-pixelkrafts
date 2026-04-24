@@ -1,0 +1,47 @@
+{
+  "quoteNo": "EQ-0001-2026",
+  "quoteDate": "25 April 2026",
+  "validUntil": "30 Days from date of quotation",
+  "toAddress": "Elite Residences Mumbai\nMumbai Maharashtra\nPh: +91 98765 43210\nEmail: contact@eliteresidences.com",
+  "subject": "Quotation for Eubiq Power Track System - Elite Residences Mumbai",
+  "notes": "Note: Project timelines are subject to timely asset delivery.",
+  "items": [
+    {
+      "id": 1,
+      "desc": "[New Product Name]\n[Technical details]",
+      "uom": "Nos.",
+      "qty": 1,
+      "rate": 0
+    }
+  ],
+  "discountRate": 0,
+  "gstRate": 0,
+  "sections": [
+    {
+      "title": "PRODUCT SPECIFICATIONS",
+      "items": []
+    },
+    {
+      "title": "SCOPE OF WORK",
+      "items": []
+    },
+    {
+      "title": "TERMS & CONDITIONS",
+      "items": [
+        "Payment: [e.g. 100% advance]",
+        "Delivery: [e.g. Within 2-3 weeks]",
+        "Validity: 30 Days from the date of this quotation",
+        "Warranty: 12 Months against manufacturing defects"
+      ]
+    }
+  ],
+  "companySignatory": "Authorized Signatory",
+  "companyName": "Pixelkrafts Software Solutions",
+  "clientSignatory": "Accepted By (Client)",
+  "clientStamp": "Signature & Stamp",
+  "subtotal": 0,
+  "discountAmount": 0,
+  "gstAmount": 0,
+  "amountInWords": "Zero Rupees Only",
+  "grandTotal": 0
+}

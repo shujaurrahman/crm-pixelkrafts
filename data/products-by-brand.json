@@ -1,0 +1,256 @@
+{
+  "Creative Services": [
+    {
+      "category": "Branding",
+      "title": "Logo Design Package",
+      "detail": "Creative Services Logo Design Package - High quality branding component.",
+      "unitPrice": 15000,
+      "code": "CR-BRA-001",
+      "stockStatus": "In Stock"
+    },
+    {
+      "category": "Branding",
+      "title": "Brand Identity Guidelines",
+      "detail": "Creative Services Brand Identity Guidelines - High quality branding component.",
+      "unitPrice": 15000,
+      "code": "CR-BRA-002",
+      "stockStatus": "In Stock"
+    },
+    {
+      "category": "Branding",
+      "title": "Stationery Design",
+      "detail": "Creative Services Stationery Design - High quality branding component.",
+      "unitPrice": 15000,
+      "code": "CR-BRA-003",
+      "stockStatus": "In Stock"
+    },
+    {
+      "category": "UI/UX Designing",
+      "title": "Mobile App UI",
+      "detail": "Creative Services Mobile App UI - High quality ui/ux designing component.",
+      "unitPrice": 15000,
+      "code": "CR-UIU-001",
+      "stockStatus": "In Stock"
+    },
+    {
+      "category": "UI/UX Designing",
+      "title": "Web Application UX",
+      "detail": "Creative Services Web Application UX - High quality ui/ux designing component.",
+      "unitPrice": 15000,
+      "code": "CR-UIU-002",
+      "stockStatus": "In Stock"
+    },
+    {
+      "category": "UI/UX Designing",
+      "title": "Landing Page Design",
+      "detail": "Creative Services Landing Page Design - High quality ui/ux designing component.",
+      "unitPrice": 15000,
+      "code": "CR-UIU-003",
+      "stockStatus": "In Stock"
+    },
+    {
+      "category": "UI/UX Designing",
+      "title": "Prototype Development",
+      "detail": "Creative Services Prototype Development - High quality ui/ux designing component.",
+      "unitPrice": 15000,
+      "code": "CR-UIU-004",
+      "stockStatus": "In Stock"
+    },
+    {
+      "category": "Graphic Design",
+      "title": "Social Media Kits",
+      "detail": "Creative Services Social Media Kits - High quality graphic design component.",
+      "unitPrice": 15000,
+      "code": "CR-GRA-001",
+      "stockStatus": "In Stock"
+    },
+    {
+      "category": "Graphic Design",
+      "title": "Marketing Collateral",
+      "detail": "Creative Services Marketing Collateral - High quality graphic design component.",
+      "unitPrice": 15000,
+      "code": "CR-GRA-002",
+      "stockStatus": "In Stock"
+    },
+    {
+      "category": "Graphic Design",
+      "title": "Annual Reports",
+      "detail": "Creative Services Annual Reports - High quality graphic design component.",
+      "unitPrice": 15000,
+      "code": "CR-GRA-003",
+      "stockStatus": "In Stock"
+    }
+  ],
+  "Development": [
+    {
+      "category": "Website Development",
+      "title": "React Next.js Website",
+      "detail": "Development React Next.js Website - High quality website development component.",
+      "unitPrice": 45000,
+      "code": "DV-WEB-001",
+      "stockStatus": "In Stock"
+    },
+    {
+      "category": "Website Development",
+      "title": "WordPress CMS",
+      "detail": "Development WordPress CMS - High quality website development component.",
+      "unitPrice": 45000,
+      "code": "DV-WEB-002",
+      "stockStatus": "In Stock"
+    },
+    {
+      "category": "Website Development",
+      "title": "Custom Web Portal",
+      "detail": "Development Custom Web Portal - High quality website development component.",
+      "unitPrice": 45000,
+      "code": "DV-WEB-003",
+      "stockStatus": "In Stock"
+    },
+    {
+      "category": "App Development",
+      "title": "iOS App Development",
+      "detail": "Development iOS App Development - High quality app development component.",
+      "unitPrice": 45000,
+      "code": "DV-APP-001",
+      "stockStatus": "In Stock"
+    },
+    {
+      "category": "App Development",
+      "title": "Android App Development",
+      "detail": "Development Android App Development - High quality app development component.",
+      "unitPrice": 45000,
+      "code": "DV-APP-002",
+      "stockStatus": "In Stock"
+    },
+    {
+      "category": "App Development",
+      "title": "Cross-platform Mobile App",
+      "detail": "Development Cross-platform Mobile App - High quality app development component.",
+      "unitPrice": 45000,
+      "code": "DV-APP-003",
+      "stockStatus": "In Stock"
+    },
+    {
+      "category": "AI & Chatbots",
+      "title": "Chatbot Development",
+      "detail": "Development Chatbot Development - High quality ai & chatbots component.",
+      "unitPrice": 45000,
+      "code": "DV-AIC-001",
+      "stockStatus": "In Stock"
+    },
+    {
+      "category": "AI & Chatbots",
+      "title": "AI Models Development",
+      "detail": "Development AI Models Development - High quality ai & chatbots component.",
+      "unitPrice": 45000,
+      "code": "DV-AIC-002",
+      "stockStatus": "In Stock"
+    },
+    {
+      "category": "AI & Chatbots",
+      "title": "Custom AI Integration",
+      "detail": "Development Custom AI Integration - High quality ai & chatbots component.",
+      "unitPrice": 45000,
+      "code": "DV-AIC-003",
+      "stockStatus": "In Stock"
+    },
+    {
+      "category": "APIs Development",
+      "title": "REST API Design",
+      "detail": "Development REST API Design - High quality apis development component.",
+      "unitPrice": 45000,
+      "code": "DV-API-001",
+      "stockStatus": "In Stock"
+    },
+    {
+      "category": "APIs Development",
+      "title": "GraphQL Implementation",
+      "detail": "Development GraphQL Implementation - High quality apis development component.",
+      "unitPrice": 45000,
+      "code": "DV-API-002",
+      "stockStatus": "In Stock"
+    },
+    {
+      "category": "APIs Development",
+      "title": "Backend System Architecture",
+      "detail": "Development Backend System Architecture - High quality apis development component.",
+      "unitPrice": 45000,
+      "code": "DV-API-003",
+      "stockStatus": "In Stock"
+    }
+  ],
+  "Digital Marketing": [
+    {
+      "category": "SEO Services",
+      "title": "Monthly SEO Audit",
+      "detail": "Digital Marketing Monthly SEO Audit - High quality seo services component.",
+      "unitPrice": 25000,
+      "code": "DM-SEO-001",
+      "stockStatus": "In Stock"
+    },
+    {
+      "category": "SEO Services",
+      "title": "Technical SEO Fixes",
+      "detail": "Digital Marketing Technical SEO Fixes - High quality seo services component.",
+      "unitPrice": 25000,
+      "code": "DM-SEO-002",
+      "stockStatus": "In Stock"
+    },
+    {
+      "category": "SEO Services",
+      "title": "Link Building Campaign",
+      "detail": "Digital Marketing Link Building Campaign - High quality seo services component.",
+      "unitPrice": 25000,
+      "code": "DM-SEO-003",
+      "stockStatus": "In Stock"
+    },
+    {
+      "category": "Social Media Ads",
+      "title": "Google Ads Management",
+      "detail": "Digital Marketing Google Ads Management - High quality social media ads component.",
+      "unitPrice": 25000,
+      "code": "DM-SOC-001",
+      "stockStatus": "In Stock"
+    },
+    {
+      "category": "Social Media Ads",
+      "title": "Meta Ads Campaign",
+      "detail": "Digital Marketing Meta Ads Campaign - High quality social media ads component.",
+      "unitPrice": 25000,
+      "code": "DM-SOC-002",
+      "stockStatus": "In Stock"
+    },
+    {
+      "category": "Social Media Ads",
+      "title": "LinkedIn Lead Gen",
+      "detail": "Digital Marketing LinkedIn Lead Gen - High quality social media ads component.",
+      "unitPrice": 25000,
+      "code": "DM-SOC-003",
+      "stockStatus": "In Stock"
+    },
+    {
+      "category": "Digital Marketing",
+      "title": "Email Marketing Strategy",
+      "detail": "Digital Marketing Email Marketing Strategy - High quality digital marketing component.",
+      "unitPrice": 25000,
+      "code": "DM-DIG-001",
+      "stockStatus": "In Stock"
+    },
+    {
+      "category": "Digital Marketing",
+      "title": "Content Marketing",
+      "detail": "Digital Marketing Content Marketing - High quality digital marketing component.",
+      "unitPrice": 25000,
+      "code": "DM-DIG-002",
+      "stockStatus": "In Stock"
+    },
+    {
+      "category": "Digital Marketing",
+      "title": "Full Digital Strategy",
+      "detail": "Digital Marketing Full Digital Strategy - High quality digital marketing component.",
+      "unitPrice": 25000,
+      "code": "DM-DIG-003",
+      "stockStatus": "In Stock"
+    }
+  ]
+}
