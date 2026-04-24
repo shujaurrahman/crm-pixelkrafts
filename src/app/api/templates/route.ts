@@ -10,14 +10,7 @@ export type Template = {
   isActive: boolean;
 };
 
-const DEFAULT_TEMPLATES: Template[] = [
-  {
-    id: 'default',
-    name: 'PixelKraft Standard',
-    imageUrl: '/Letter Head PixelKraft.png',
-    isActive: true
-  }
-];
+const DEFAULT_TEMPLATES: Template[] = [];
 
 export async function GET() {
   try {

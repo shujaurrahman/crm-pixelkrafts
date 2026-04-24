@@ -3142,7 +3142,18 @@ export default function Home() {
                   <h3 className="mgmt-card-title">Available Templates</h3>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '24px', padding: '24px' }}>
-                  {templates.map(t => (
+                  {templates.length === 0 ? (
+                    <div style={{ gridColumn: '1 / -1', padding: '60px 20px', textAlign: 'center', background: '#f8fafc', borderRadius: '16px', border: '2px dashed #cbd5e1' }}>
+                      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5" style={{ marginBottom: '16px' }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                      <div style={{ fontSize: '15px', fontWeight: 900, color: '#475569', marginBottom: '8px', letterSpacing: '0.5px' }}>
+                        USING STANDARD A4 SHEET
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#64748b', maxWidth: '300px', margin: '0 auto', lineHeight: '1.6' }}>
+                        No templates found. Upload your agency letterhead on the right to use it for all your quotations.
+                      </div>
+                    </div>
+                  ) : (
+                    templates.map(t => (
                     <div key={t.id} className={`template-preview-card ${t.isActive ? 'active' : ''}`}
                       style={{
                         background: 'var(--card)',
@@ -3197,7 +3208,7 @@ export default function Home() {
                 <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
                   <div className="form-group">
                     <label className="label">Template Name</label>
-                    <input id="tmpl-name" className="field" placeholder="e.g. PixelKraft Standard" />
+                    <input id="tmpl-name" className="field" placeholder="e.g. My Agency Letterhead" />
                   </div>
                   <div className="form-group">
                     <label className="label">Upload Letterhead Image</label>
