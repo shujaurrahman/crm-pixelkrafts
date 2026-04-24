@@ -213,7 +213,7 @@ export default function ClientQuotePortal({ params: rawParams }: { params: Promi
 
       <div className="document-canvas">
         {paginatedProductChunks.map((chunk, pageIdx) => (
-          <div key={`prod-${pageIdx}`} className="a4-page" style={{ backgroundImage: `url('${letterhead}')` }}>
+          <div key={`prod-${pageIdx}`} className="a4-page" style={{ backgroundImage: letterhead ? `url('${letterhead}')` : 'none', backgroundColor: 'white' }}>
             <div className="page-content">
               <div className="logo-level-date"><strong>Date:</strong> {quote.quoteDate}</div>
               {pageIdx === 0 && (
@@ -343,7 +343,7 @@ export default function ClientQuotePortal({ params: rawParams }: { params: Promi
           const currentPage = paginatedProductChunks.length + pIdx + 1;
           const isFinalPage = currentPage === totalPages;
           return (
-            <div key={`sec-${pIdx}`} className="a4-page" style={{ backgroundImage: `url('${letterhead}')` }}>
+            <div key={`sec-${pIdx}`} className="a4-page" style={{ backgroundImage: letterhead ? `url('${letterhead}')` : 'none', backgroundColor: 'white' }}>
               <div className="page-content">
                 <div className="logo-level-date"><strong>Date:</strong> {quote.quoteDate}</div>
                 

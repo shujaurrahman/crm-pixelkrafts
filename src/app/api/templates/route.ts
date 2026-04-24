@@ -35,8 +35,9 @@ export async function POST(request: Request) {
     let templates = await readJsonBlob<Template[]>(TEMPLATES_BLOB_NAME, DEFAULT_TEMPLATES);
 
     if (action === 'add') {
-      const isFirst = templates.length === 0;
-      templates.push({ ...template, id: `tmpl-${Date.now()}`, isActive: isFirst });
+      // Deactivate all existing templates so the new one can be the default
+      templates = templates.map(t => ({ ...t, isActive: false }));
+      templates.push({ ...template, id: `tmpl-${Date.now()}`, isActive: true });
     } else if (action === 'select') {
       templates = templates.map(t => ({
         ...t,

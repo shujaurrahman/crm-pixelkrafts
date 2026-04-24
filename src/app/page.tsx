@@ -215,7 +215,7 @@ export default function Home() {
         body: JSON.stringify({ action: 'add', template: { name, imageUrl } })
       });
       await fetchTemplates();
-      toast.success('New template added!');
+      toast.success('New template added and set as default!');
     } catch (e) {
       toast.error('Failed to add template');
     } finally {
