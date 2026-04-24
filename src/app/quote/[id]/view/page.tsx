@@ -365,7 +365,7 @@ export default function ClientQuotePortal({ params: rawParams }: { params: Promi
                     <div className="company-sign-box">
                       <div className="sig-label">{quote.companySignatory}</div>
                       <div className="sig-comp">{quote.companyName}</div>
-                      <div className="sig-stamp">For PixelKraft Digital Agency</div>
+                      <div className="sig-stamp">For Pixelkraft Software Solutions</div>
                     </div>
                     <div className="client-sign-box">
                       <div className="sig-label">{quote.clientSignatory}</div>

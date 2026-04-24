@@ -22,7 +22,7 @@ export default function QuotePage() {
   const [validUntil, setValidUntil] = useState('30 Days from date of quotation');
   
   const [toAddress, setToAddress] = useState('[Client Name]\n[Company Name / Apartment]\n[Street Address, City, State]\n[Phone/Email]');
-  const [subject, setSubject] = useState('Quotation for PixelKraft Services - [Project Name]');
+  const [subject, setSubject] = useState('Quotation for Pixelkraft Software Solutions - [Project Name]');
   
   const [notes, setNotes] = useState('Note: Project timelines are subject to timely asset delivery.');
   
@@ -145,7 +145,7 @@ export default function QuotePage() {
           if (found) {
             setLead(found);
             setToAddress(`${found.clientName}\n${found.city || ''} ${found.state || ''}\nPh: ${found.phone || ''}\nEmail: ${found.email || ''}`);
-            setSubject(`Quotation for PixelKraft Services - ${found.clientName}`);
+            setSubject(`Quotation for Pixelkraft Software Solutions - ${found.clientName}`);
           }
         }
 
@@ -395,7 +395,7 @@ export default function QuotePage() {
       <div className="no-print modern-toolbar">
         <div className="toolbar-left">
           <button className="cool-back-btn" onClick={() => router.back()}><span>←</span> Back</button>
-          <div className="brand-indicator"><span className="dot"></span><h2>PIXELKRAFT DIGITAL</h2></div>
+          <div className="brand-indicator"><span className="dot"></span><h2>PIXELKRAFT SOFTWARE SOLUTIONS</h2></div>
         </div>
 
         <div className="toolbar-center">

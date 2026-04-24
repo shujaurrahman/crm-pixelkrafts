@@ -191,6 +191,7 @@ export default function Home() {
   }, []);
 
   const selectTemplate = async (id: string) => {
+    if (isTemplateBusy) return;
     setIsTemplateBusy(true);
     try {
       await fetch('/api/templates', {
@@ -249,6 +250,14 @@ export default function Home() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const syncingRef = useRef(false);
+  const lastSyncTime = useRef(0);
+
+  const setSyncingStatus = (val: boolean) => {
+    syncingRef.current = val;
+    setSyncing(val);
+    if (!val) lastSyncTime.current = Date.now();
+  };
 
   const [clientTypes, setClientTypes] = useState<string[]>([...CLIENT_TYPES]);
   const [newClientType, setNewClientType] = useState('');
@@ -352,63 +361,23 @@ export default function Home() {
   }, [isSearchOpen]);
 
   useEffect(() => {
-    const loadData = async () => {
+    const loadData = async (isInitial = false) => {
+      // Don't overwrite if we are currently syncing or just finished syncing (within 2s)
+      if (syncingRef.current || (Date.now() - lastSyncTime.current < 2000)) {
+        return;
+      }
+
       try {
-        setIsLoading(true);
-
-        let hasCachedData = false;
-
-        if (typeof window !== 'undefined') {
-          const cachedLeads = localStorage.getItem(LEADS_CACHE_KEY);
-          const cachedClientTypes = localStorage.getItem(CLIENT_TYPES_CACHE_KEY);
-          const cachedOwners = localStorage.getItem(OWNERS_CACHE_KEY);
-
-          if (cachedLeads) {
-            try {
-              const parsed = JSON.parse(cachedLeads) as Lead[];
-              if (Array.isArray(parsed)) {
-                setLeads(parsed);
-                hasCachedData = parsed.length > 0;
-              }
-            } catch {
-              localStorage.removeItem(LEADS_CACHE_KEY);
-            }
-          }
-
-          if (cachedClientTypes) {
-            try {
-              const parsed = JSON.parse(cachedClientTypes) as string[];
-              if (Array.isArray(parsed) && parsed.length) {
-                setClientTypes(parsed);
-                hasCachedData = true;
-              }
-            } catch {
-              localStorage.removeItem(CLIENT_TYPES_CACHE_KEY);
-            }
-          }
-
-          if (cachedOwners) {
-            try {
-              const parsed = JSON.parse(cachedOwners) as string[];
-              if (Array.isArray(parsed) && parsed.length) {
-                setOwners(parsed);
-                hasCachedData = true;
-              }
-            } catch {
-              localStorage.removeItem(OWNERS_CACHE_KEY);
-            }
-          }
-        }
-
-        if (hasCachedData) {
-          setIsLoading(false);
-        }
+        if (isInitial) setIsLoading(true);
 
         const [leadResult, clientTypeResult, ownerResult] = await Promise.allSettled([
           requestJson<{ leads: Lead[] }>('/api/leads', { cache: 'no-store' }),
           requestJson<{ clientTypes: string[] }>('/api/client-types', { cache: 'no-store' }),
           requestJson<{ owners: string[] }>('/api/owners', { cache: 'no-store' }),
         ]);
+
+        // Check again before setting state
+        if (syncingRef.current) return;
 
         const loadErrors: string[] = [];
 
@@ -446,26 +415,31 @@ export default function Home() {
           loadErrors.push('Owners');
         }
 
-        if (loadErrors.length) {
+        if (loadErrors.length && isInitial) {
           toast.error(`Some data could not be refreshed (${loadErrors.join(', ')}). Showing latest available values.`);
         }
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : 'Unable to load CRM data. Showing latest available values.');
+        if (isInitial) {
+          toast.error(error instanceof Error ? error.message : 'Unable to load CRM data. Showing latest available values.');
+        }
       } finally {
-        setIsLoading(false);
+        if (isInitial) setIsLoading(false);
       }
     };
 
-    void loadData();
+    void loadData(true);
 
     const handleFocus = () => {
-      void loadData();
+      // Throttled focus reload
+      if (Date.now() - lastSyncTime.current > 5000) {
+        void loadData(false);
+      }
     };
 
     window.addEventListener('focus', handleFocus);
 
-    // Polling every 30 seconds for background sync
-    const interval = setInterval(loadData, 30000);
+    // Polling every 60 seconds for background sync (increased from 30s)
+    const interval = setInterval(() => loadData(false), 60000);
 
     return () => {
       window.removeEventListener('focus', handleFocus);
@@ -646,7 +620,7 @@ export default function Home() {
   }, [leads]);
 
   const syncLeads = async (nextLeads: Lead[]) => {
-    setSyncing(true);
+    setSyncingStatus(true);
     try {
       await requestJson<{ ok: true }>('/api/leads', {
         method: 'PUT',
@@ -657,7 +631,7 @@ export default function Home() {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to sync leads');
     } finally {
-      setSyncing(false);
+      setSyncingStatus(false);
     }
   };
 
@@ -716,7 +690,7 @@ export default function Home() {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to sync client types');
     } finally {
-      setSyncing(false);
+      setSyncingStatus(false);
     }
   };
 
@@ -732,7 +706,7 @@ export default function Home() {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to sync owners');
     } finally {
-      setSyncing(false);
+      setSyncingStatus(false);
     }
   };
 
@@ -747,7 +721,7 @@ export default function Home() {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to sync products');
     } finally {
-      setSyncing(false);
+      setSyncingStatus(false);
     }
   };
 
@@ -760,6 +734,7 @@ export default function Home() {
   };
 
   const resetForm = () => {
+    setFormStep(1);
     setForm((prev) => ({
       ...prev,
       date: new Date().toISOString().slice(0, 10),
@@ -1143,7 +1118,16 @@ export default function Home() {
       createdAt: new Date().toISOString(),
     };
 
-    setSyncing(true);
+    const previousLeads = [...leads];
+    const optimisticLeads = [newLead, ...leads];
+    
+    // UI state updates (optimistic)
+    setLeads(optimisticLeads);
+    setTab('enquires');
+    resetForm();
+    toast.success('Lead created successfully!');
+
+    setSyncingStatus(true);
     try {
       const payload = await requestJson<{ ok: true; lead: Lead }>('/api/leads', {
         method: 'POST',
@@ -1152,18 +1136,18 @@ export default function Home() {
       });
 
       const savedLead = payload.lead || newLead;
-      const nextLeads = [savedLead, ...leads.filter((lead) => lead.id !== savedLead.id)];
-      setLeads(nextLeads);
+      const finalLeads = [savedLead, ...leads.filter((lead) => lead.id !== savedLead.id)];
+      setLeads(finalLeads);
+      
       if (typeof window !== 'undefined') {
-        localStorage.setItem(LEADS_CACHE_KEY, JSON.stringify(nextLeads));
+        localStorage.setItem(LEADS_CACHE_KEY, JSON.stringify(finalLeads));
       }
-
-      setTab('enquires');
-      resetForm();
     } catch (error) {
+      // Rollback on error
+      setLeads(previousLeads);
       toast.error(error instanceof Error ? error.message : 'Failed to save lead');
     } finally {
-      setSyncing(false);
+      setSyncingStatus(false);
     }
   };
 
@@ -1669,6 +1653,20 @@ export default function Home() {
             <button className="mode-toggle" onClick={() => setTheme((prev) => (prev === 'light' ? 'dark' : 'light'))}>
               {mounted && (theme === 'light' ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" /></svg>)}
             </button>
+            {syncing && (
+              <div className="meta-pill sync-indicator" style={{ display: 'flex', alignItems: 'center', gap: '6px', borderColor: 'var(--blue)', color: 'var(--blue)', background: 'var(--blue-soft)' }}>
+                <svg className="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" style={{ animation: 'spin 1s linear infinite' }}>
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                </svg>
+                <span>Saving...</span>
+              </div>
+            )}
+            {!syncing && mounted && (
+              <div className="meta-pill" style={{ opacity: 0.6, fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" style={{ color: 'var(--green)' }}><polyline points="20 6 9 17 4 12"></polyline></svg>
+                Synced
+              </div>
+            )}
             <div className="meta-pill" style={{ whiteSpace: 'nowrap' }}>{analytics.totalLeads} leads</div>
             <div className="meta-pill" style={{ whiteSpace: 'nowrap' }}>{money(analytics.totalValue)} pipeline</div>
             <div className="meta-pill" style={{ whiteSpace: 'nowrap' }}>{money(analytics.openValue)} open pipeline</div>
@@ -3146,10 +3144,10 @@ export default function Home() {
                     <div style={{ gridColumn: '1 / -1', padding: '60px 20px', textAlign: 'center', background: '#f8fafc', borderRadius: '16px', border: '2px dashed #cbd5e1' }}>
                       <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5" style={{ marginBottom: '16px' }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                       <div style={{ fontSize: '15px', fontWeight: 900, color: '#475569', marginBottom: '8px', letterSpacing: '0.5px' }}>
-                        USING STANDARD A4 SHEET
+                        PIXELKRAFT STANDARD A4
                       </div>
                       <div style={{ fontSize: '13px', color: '#64748b', maxWidth: '300px', margin: '0 auto', lineHeight: '1.6' }}>
-                        No templates found. Upload your agency letterhead on the right to use it for all your quotations.
+                        No custom templates uploaded. Using the system standard A4 layout. Upload your agency letterhead on the right to customize.
                       </div>
                     </div>
                   ) : (
@@ -3163,7 +3161,8 @@ export default function Home() {
                         cursor: 'pointer',
                         transition: 'all 0.2s ease',
                         boxShadow: t.isActive ? '0 10px 25px -5px rgba(37, 99, 235, 0.2)' : 'none',
-                        transform: t.isActive ? 'scale(1.02)' : 'scale(1)'
+                        transform: t.isActive ? 'scale(1.02)' : 'scale(1)',
+                        position: 'relative'
                       }}
                       onClick={() => selectTemplate(t.id)}>
                       <div style={{ height: '240px', background: '#f1f5f9', position: 'relative' }}>
@@ -3176,26 +3175,60 @@ export default function Home() {
                             display: 'flex',
                             alignItems: 'flex-start',
                             justifyContent: 'flex-end',
-                            padding: '12px'
+                            padding: '12px',
+                            pointerEvents: 'none'
                           }}>
                             <div style={{ background: '#2563eb', color: 'white', fontSize: '11px', fontWeight: 900, padding: '4px 12px', borderRadius: '20px', boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)' }}>
-                              CURRENT DEFAULT
+                              ACTIVE DEFAULT
+                            </div>
+                          </div>
+                        )}
+                        {!t.isActive && (
+                          <div className="template-hover-overlay" style={{
+                            position: 'absolute',
+                            top: 0, left: 0, right: 0, bottom: 0,
+                            background: 'rgba(0,0,0,0.4)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            opacity: 0,
+                            transition: 'opacity 0.2s ease',
+                            pointerEvents: 'none'
+                          }}>
+                            <div style={{ background: 'white', color: 'black', padding: '8px 16px', borderRadius: '8px', fontWeight: 700, fontSize: '12px' }}>
+                              CLICK TO SELECT
                             </div>
                           </div>
                         )}
                       </div>
                       <div style={{ padding: '16px', borderTop: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: t.isActive ? '#f8fafc' : 'transparent' }}>
                         <span style={{ fontWeight: 800, fontSize: '14px', color: t.isActive ? '#1e3a8a' : 'inherit' }}>{t.name}</span>
-                        {!t.isActive && t.id !== 'default' && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); deleteTemplate(t.id); }}
-                            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
-                            title="Delete Template"
-                          >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></svg>
-                          </button>
-                        )}
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          {!t.isActive && (
+                            <button 
+                              className="btn btn-compact"
+                              style={{ padding: '4px 8px', fontSize: '10px', background: '#2563eb', color: 'white', border: 'none' }}
+                              onClick={(e) => { e.stopPropagation(); selectTemplate(t.id); }}
+                            >
+                              Set Active
+                            </button>
+                          )}
+                          {!t.isActive && t.id !== 'default' && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); deleteTemplate(t.id); }}
+                              style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
+                              title="Delete Template"
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></svg>
+                            </button>
+                          )}
+                        </div>
                       </div>
+                      <style jsx>{`
+                        .template-preview-card:hover .template-hover-overlay {
+                          opacity: 1 !important;
+                        }
+                      `}</style>
                     </div>
                   )))}
                 </div>

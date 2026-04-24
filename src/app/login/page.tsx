@@ -30,7 +30,7 @@ export default function LoginPage() {
     <div className="login-wrapper">
       <div className="login-card">
         <div className="login-header">
-          <div className="brand-badge">PIXELKRAFT</div>
+          <div className="brand-badge">PIXELKRAFT SOFTWARE SOLUTIONS</div>
           <h1>Agency CRM</h1>
           <p>Digital Agency Management System</p>
         </div>
@@ -64,7 +64,7 @@ export default function LoginPage() {
         </form>
         
         <div className="login-footer">
-          © {new Date().getFullYear()} PixelKraft Digital Agency
+          © {new Date().getFullYear()} Pixelkraft Software Solutions
         </div>
       </div>
 
