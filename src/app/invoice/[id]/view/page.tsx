@@ -12,6 +12,13 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
   const [invoice, setInvoice] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  // Defaults
+  const defaultCompanyName = 'Pixelkraft Software Solutions';
+  const defaultCompanyAddress = '805 Wasil Pilibhit 262001 UP India';
+  const defaultCompanyEmail = 'official@pixelkrafts.in';
+  const defaultCompanyPhone = '+917579966178';
+  const defaultMsmeNumber = 'UDYAM-UP-60-0038284';
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -66,8 +73,15 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
   const taxAmount = (taxableAmount * (invoice.tax || 0)) / 100;
   const grandTotal = taxableAmount + taxAmount;
 
+  // Use dynamic company details if available
+  const companyName = invoice.companyName || defaultCompanyName;
+  const companyAddress = invoice.companyAddress || defaultCompanyAddress;
+  const companyEmail = invoice.companyEmail || defaultCompanyEmail;
+  const companyPhone = invoice.companyPhone || defaultCompanyPhone;
+  const msmeNumber = invoice.msmeNumber || defaultMsmeNumber;
+
   return (
-    <div className="invoice-container">
+    <div className="invoice-container theme-adaptive">
       <Toaster position="top-center" richColors />
       
       <div className="no-print action-bar">
@@ -77,12 +91,22 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
       <div className="invoice-box a4-page">
         <header className="invoice-header">
           <div className="branding">
-            <h1 className="company-name">Pixelkraft Software Solutions</h1>
-            <p className="msme-badge">MSME Registered Enterprise</p>
-            <p className="company-details">Bangalore, Karnataka, India | contact@pixelkrafts.in</p>
+            <h1 className="company-name">{companyName}</h1>
+            <div className="msme-section">
+              <span className="msme-id">{msmeNumber}</span>
+              <p className="msme-label">MSME Certified</p>
+            </div>
+            <div className="company-details">
+              <p>{companyAddress}</p>
+              <div className="contact-row">
+                <span>{companyEmail}</span>
+                <span className="separator">|</span>
+                <span>{companyPhone}</span>
+              </div>
+            </div>
           </div>
           <div className="invoice-meta">
-            <h2 className="doc-title">TAX INVOICE</h2>
+            <h2 className="doc-title">Invoice</h2>
             <div className="meta-grid">
               <div className="meta-item">
                 <span className="label">Invoice No:</span>
@@ -92,12 +116,6 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
                 <span className="label">Date:</span>
                 <span className="val">{invoice.date}</span>
               </div>
-              {invoice.lastSaved && (
-                <div className="meta-item">
-                  <span className="label">Last Saved:</span>
-                  <span className="val">{new Date(invoice.lastSaved).toLocaleDateString()}</span>
-                </div>
-              )}
             </div>
           </div>
         </header>
@@ -111,20 +129,20 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
         </section>
 
         {invoice.subject && (
-          <div className="subject-line" style={{ marginBottom: '30px', borderLeft: '4px solid #0f172a', paddingLeft: '12px' }}>
-            <strong style={{ fontSize: '14px' }}>Subject: </strong>
-            <span style={{ fontSize: '14px', fontWeight: 600 }}>{invoice.subject}</span>
+          <div className="subject-area">
+            <strong>Subject: </strong>
+            <span>{invoice.subject}</span>
           </div>
         )}
 
         <table className="invoice-table">
           <thead>
             <tr>
-              <th>SR</th>
+              <th style={{ width: '40px' }}>SR</th>
               <th>Description</th>
-              <th className="right">Qty</th>
-              <th className="right">Rate</th>
-              <th className="right">Amount</th>
+              <th className="right" style={{ width: '60px' }}>Qty</th>
+              <th className="right" style={{ width: '120px' }}>Rate</th>
+              <th className="right" style={{ width: '120px' }}>Amount</th>
             </tr>
           </thead>
           <tbody>
@@ -148,114 +166,246 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
             </div>
             <div className="bank-details">
               <h4 className="label">Bank Details:</h4>
-              <div style={{ whiteSpace: 'pre-wrap', marginBottom: '16px' }}>
+              <div className="bank-content">
                 {invoice.bankDetails || 'A/C: 50100656771132\nIFSC: HDFC0000651\nBranch: NOIDA SEC 26\nAccount Type: SAVINGS'}
               </div>
-              <div className="upi-section" style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
-                <div className="upi-meta" style={{ flex: 1 }}>
-                  <h4 className="label" style={{ fontSize: '10px', fontWeight: 800, marginBottom: '4px', color: '#0f172a', textTransform: 'uppercase' }}>Scan to Pay via UPI:</h4>
-                  <p className="upi-id" style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', margin: '4px 0' }}>7579966178@hdfc</p>
+              <div className="upi-section">
+                <div className="upi-meta">
+                  <h4 className="label">Scan to Pay via UPI:</h4>
+                  <p className="upi-id">7579966178@hdfc</p>
                 </div>
-                <div className="upi-scanner-wrap" style={{ width: '60px', height: '60px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '4px', padding: '4px', overflow: 'hidden' }}>
-                  <img src="/UPI.jpeg" alt="UPI Scanner" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                <div className="upi-scanner-wrap">
+                  <img src="/UPI.jpeg" alt="UPI Scanner" className="upi-img" />
                 </div>
               </div>
             </div>
           </div>
           <div className="totals-col">
             <div className="total-row">
-              <span>Sub Total:</span>
-              <span>₹{subtotal.toLocaleString('en-IN')}</span>
+              <span className="label">Sub Total:</span>
+              <span className="val">₹{subtotal.toLocaleString('en-IN')}</span>
             </div>
             {invoice.discount > 0 && (
               <div className="total-row">
-                <span>Discount ({invoice.discount}%):</span>
-                <span>- ₹{Math.round(discountAmount).toLocaleString('en-IN')}</span>
+                <span className="label">Discount ({invoice.discount}%):</span>
+                <span className="val">- ₹{Math.round(discountAmount).toLocaleString('en-IN')}</span>
               </div>
             )}
             <div className="total-row">
-              <span>GST ({invoice.tax}%):</span>
-              <span>₹{Math.round(taxAmount).toLocaleString('en-IN')}</span>
+              <span className="label">GST ({invoice.tax}%):</span>
+              <span className="val">₹{Math.round(taxAmount).toLocaleString('en-IN')}</span>
             </div>
             <div className="total-row grand-total">
-              <span>Grand Total:</span>
-              <span>₹{Math.round(grandTotal).toLocaleString('en-IN')}</span>
+              <span className="label">Grand Total:</span>
+              <span className="val">₹{Math.round(grandTotal).toLocaleString('en-IN')}</span>
             </div>
           </div>
         </footer>
 
         <div className="signature-area">
           <div className="auth-sign">
+            <p className="signature-italic">{companyName}</p>
             <div className="sign-line"></div>
             <p>Authorized Signatory</p>
-            <p className="comp-label">Pixelkraft Software Solutions</p>
+            <p className="comp-label">{companyName}</p>
           </div>
         </div>
       </div>
 
       <style jsx global>{`
-        body { background: #f1f5f9; margin: 0; font-family: 'Inter', sans-serif; color: #000; }
-        .invoice-container { display: flex; flex-direction: column; align-items: center; padding: 40px 0; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Dancing+Script:wght@600&display=swap');
+
+        body { margin: 0; font-family: 'Inter', sans-serif; }
+        .invoice-container { 
+          display: flex; 
+          flex-direction: column; 
+          align-items: center; 
+          padding: 40px 0; 
+          min-height: 100vh;
+          transition: background 0.3s ease;
+        }
+
+        /* Adaptive Theme Support */
+        @media (prefers-color-scheme: light) {
+          .theme-adaptive { background: #f9f9fb; }
+        }
+        @media (prefers-color-scheme: dark) {
+          .theme-adaptive { background: #000000; }
+        }
+
         .action-bar { width: 210mm; margin-bottom: 20px; display: flex; justify-content: flex-end; }
-        .btn-print { background: #000; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; }
+        
+        .btn-print { 
+          background: #007aff; 
+          color: white; 
+          border: none; 
+          padding: 10px 24px; 
+          border-radius: 8px; 
+          font-weight: 600; 
+          cursor: pointer; 
+          transition: all 0.2s;
+        }
+        .btn-print:hover { opacity: 0.9; transform: translateY(-1px); }
         
         .a4-page { 
-          width: 210mm; min-height: 297mm; background: white; padding: 25mm;
-          box-shadow: 0 10px 25px rgba(0,0,0,0.1); border-radius: 4px;
-          display: flex; flex-direction: column;
-          color: #000 !important;
+          width: 210mm; 
+          min-height: 297mm; 
+          background: white; 
+          padding: 20mm;
+          box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+          border-radius: 4px;
+          display: flex; 
+          flex-direction: column;
+          color: #1a1a1e !important;
         }
-        .a4-page * { color: #000 !important; }
+        .a4-page * { color: #1a1a1e !important; }
 
-        .invoice-header { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 3px solid #000; padding-bottom: 25px; margin-bottom: 50px; align-items: start; gap: 40px; }
-        .company-name { font-size: 28px; font-weight: 950; color: #000 !important; margin: 0; line-height: 1.1; }
-        .msme-badge { display: inline-block; background: #000; color: #fff !important; font-size: 10px; font-weight: 900; padding: 4px 10px; border-radius: 2px; align-self: flex-start; text-transform: uppercase; margin: 5px 0; }
-        .msme-badge * { color: #fff !important; }
-        .company-details { font-size: 13px; color: #000 !important; margin: 0; line-height: 1.6; font-weight: 600; }
+        .invoice-header { 
+          display: flex; 
+          justify-content: space-between; 
+          align-items: flex-start; 
+          margin-bottom: 40px; 
+          padding-bottom: 20px;
+          border-bottom: 1px solid #f1f1f4;
+        }
         
-        .doc-title { font-size: 40px; font-weight: 950; color: #000 !important; margin: 0 0 16px 0; text-align: right; letter-spacing: 3px; line-height: 1; }
-        .meta-grid { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
-        .meta-item { font-size: 14px; display: flex; gap: 12px; justify-content: flex-end; width: 100%; }
-        .meta-item .label { font-weight: 950; min-width: 100px; text-align: right; }
-        .meta-item .val { font-weight: 900; min-width: 150px; text-align: left; }
+        .branding { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+        .company-name { font-size: 22px; font-weight: 800; color: #1a1a1e !important; margin: 0; line-height: 1.2; letter-spacing: -0.5px; }
+        
+        .msme-section { display: flex; flex-direction: column; gap: 1px; margin-top: 4px; }
+        .msme-id { font-size: 10px; font-weight: 700; color: #8e8e93 !important; }
+        .msme-label { font-size: 9px; font-weight: 600; color: #8e8e93 !important; text-transform: uppercase; letter-spacing: 0.5px; margin: 0; }
 
-        .billing-section { margin-bottom: 50px; }
-        .section-title { font-size: 13px; font-weight: 950; text-transform: uppercase; margin-bottom: 15px; border-bottom: 3px solid #000; display: inline-block; padding-bottom: 4px; }
-        .client-name { font-size: 22px; font-weight: 950; color: #000 !important; margin: 0; }
-        .client-address { font-size: 15px; color: #000 !important; margin: 10px 0; white-space: pre-wrap; line-height: 1.7; font-weight: 600; }
+        .company-details { font-size: 13px; color: #8e8e93 !important; margin-top: 8px; }
+        .company-details p { margin: 0; }
+        .contact-row { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+        .separator { color: #e5e5ea !important; }
+        
+        .doc-title { 
+          font-size: 32px; 
+          font-weight: 800; 
+          color: #1a1a1e !important; 
+          margin: 0 0 12px 0; 
+          text-align: right; 
+          text-transform: uppercase;
+          letter-spacing: -1px;
+        }
+        .meta-grid { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+        .meta-item { font-size: 13px; display: flex; gap: 12px; justify-content: flex-end; }
+        .meta-item .label { font-weight: 500; color: #8e8e93 !important; }
+        .meta-item .val { font-weight: 600; text-align: right; }
 
-        .invoice-table { width: 100%; border-collapse: collapse; margin-bottom: 40px; border: 2px solid #000; }
-        .invoice-table th { background: #000; text-align: left; padding: 16px 12px; font-size: 13px; font-weight: 950; text-transform: uppercase; color: #fff !important; border: 1px solid #000; }
-        .invoice-table th * { color: #fff !important; }
-        .invoice-table td { padding: 14px 12px; font-size: 15px; border: 1px solid #000; color: #000 !important; font-weight: 700; }
+        .billing-section { margin-bottom: 40px; }
+        .section-title { 
+          font-size: 11px; 
+          font-weight: 700; 
+          text-transform: uppercase; 
+          margin-bottom: 12px; 
+          color: #8e8e93 !important; 
+          letter-spacing: 1px;
+        }
+        .client-name { font-size: 18px; font-weight: 700; color: #1a1a1e !important; margin: 0; }
+        .client-address { font-size: 14px; color: #1a1a1e !important; margin: 6px 0; white-space: pre-wrap; line-height: 1.5; }
+
+        .subject-area { 
+          margin-bottom: 40px; 
+          font-size: 14px; 
+          padding: 16px; 
+          background: #f9f9fb; 
+          border-radius: 8px; 
+          border: 1px solid #f1f1f4;
+        }
+        .subject-area strong { font-weight: 600; color: #8e8e93 !important; }
+
+        .invoice-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+        .invoice-table th { 
+          text-align: left; 
+          padding: 12px; 
+          font-size: 11px; 
+          font-weight: 700; 
+          text-transform: uppercase; 
+          color: #8e8e93 !important; 
+          border-bottom: 2px solid #f1f1f4;
+          letter-spacing: 1px;
+        }
+        .invoice-table td { padding: 12px; font-size: 14px; border-bottom: 1px solid #f1f1f4; color: #1a1a1e !important; vertical-align: top; }
         .invoice-table .right { text-align: right; }
 
-        .invoice-footer { display: grid; grid-template-columns: 1.3fr 1fr; gap: 80px; margin-top: auto; border-top: 4px solid #000; padding-top: 50px; }
-        .amount-words { margin-bottom: 40px; }
-        .amount-words .label { font-size: 12px; font-weight: 950; text-transform: uppercase; margin-bottom: 8px; display: block; }
-        .amount-words .val { font-size: 15px; font-weight: 900; color: #000 !important; margin: 8px 0; text-transform: capitalize; border-bottom: 2px solid #eee; padding-bottom: 8px; line-height: 1.4; }
+        .invoice-footer { 
+          display: grid; 
+          grid-template-columns: 1.2fr 1fr; 
+          gap: 60px; 
+          margin-top: auto; 
+          padding-top: 40px;
+          border-top: 1px solid #f1f1f4;
+        }
         
-        .bank-details { font-size: 14px; color: #000 !important; line-height: 1.7; font-weight: 700; }
-        .bank-details .label { font-size: 12px; font-weight: 950; margin-bottom: 15px; color: #000 !important; text-transform: uppercase; display: block; }
+        .amount-words .label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #8e8e93 !important; letter-spacing: 0.5px; }
+        .amount-words .val { font-size: 13px; font-weight: 600; color: #1a1a1e !important; margin: 4px 0; font-style: italic; }
         
-        .total-row { display: flex; justify-content: space-between; padding: 10px 0; font-size: 16px; color: #000 !important; font-weight: 900; border-bottom: 2px solid #f0f0f0; }
-        .grand-total { border-top: 4px solid #000; margin-top: 20px; padding-top: 25px; font-size: 22px; font-weight: 950; }
-        .grand-total span:last-child { font-size: 32px; }
-        
-        .signature-area { display: flex; justify-content: flex-end; margin-top: 100px; }
-        .auth-sign { text-align: center; width: 280px; }
-        .sign-line { border-bottom: 3px solid #000; margin-bottom: 12px; height: 70px; }
-        .auth-sign p { font-size: 15px; font-weight: 950; color: #000 !important; margin: 0; }
-        .comp-label { font-size: 12px !important; font-weight: 800 !important; margin-top: 4px !important; }
+        .bank-details .label { font-size: 10px; font-weight: 700; margin-bottom: 12px; text-transform: uppercase; color: #8e8e93 !important; display: block; }
+        .bank-content { 
+          white-space: pre-wrap; 
+          font-size: 12px; 
+          color: #1a1a1e !important; 
+          line-height: 1.6; 
+          margin-bottom: 20px; 
+          font-weight: 500;
+          background: #f9f9fb;
+          padding: 12px;
+          border-radius: 8px;
+        }
 
-        .loading, .error { height: 100vh; display: flex; align-items: center; justify-content: center; font-weight: 700; }
-        .error { color: #ef4444; }
+        .upi-section { 
+          display: flex; 
+          align-items: center; 
+          gap: 16px; 
+          background: #ffffff; 
+          padding: 12px; 
+          border-radius: 8px; 
+          border: 1px solid #f1f1f4; 
+        }
+        .upi-meta .label { font-size: 9px; font-weight: 700; text-transform: uppercase; color: #8e8e93 !important; margin-bottom: 4px; }
+        .upi-id { font-size: 13px; font-weight: 700; color: #1a1a1e !important; margin: 0; }
+        .upi-scanner-wrap { width: 60px; height: 60px; border: 1px solid #f1f1f4; border-radius: 6px; padding: 4px; }
+        .upi-img { width: 100%; height: 100%; object-fit: contain; }
+
+        .total-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; font-size: 14px; }
+        .total-row .label { font-weight: 500; color: #8e8e93 !important; }
+        .total-row .val { font-weight: 600; }
+        
+        .grand-total { 
+          border-top: 2px solid #f1f1f4; 
+          margin-top: 12px; 
+          padding-top: 16px; 
+        }
+        .grand-total .label { font-size: 18px; font-weight: 700; color: #1a1a1e !important; }
+        .grand-total .val { font-size: 24px; font-weight: 800; color: #007aff !important; }
+        
+        .signature-area { display: flex; justify-content: flex-end; margin-top: 60px; }
+        .auth-sign { text-align: center; width: 220px; }
+        .signature-italic { font-family: 'Dancing Script', cursive; font-size: 22px; color: #1a1a1e !important; margin-bottom: -8px; }
+        .sign-line { border-bottom: 1px solid #e5e5ea; margin-bottom: 12px; height: 60px; }
+        .auth-sign p { font-size: 13px; font-weight: 600; color: #8e8e93 !important; margin: 0; }
+ 
+        .loading, .error { height: 100vh; display: flex; align-items: center; justify-content: center; font-weight: 600; }
+        .error { color: #ff3b30; }
 
         @media print {
-          body { background: white; }
-          .no-print { display: none; }
-          .invoice-container { padding: 0; }
-          .a4-page { box-shadow: none; padding: 10mm; }
+          html, body { height: auto !important; margin: 0 !important; padding: 0 !important; background: white !important; }
+          .no-print { display: none !important; }
+          .invoice-container { padding: 0 !important; background: white !important; min-height: auto !important; }
+          .a4-page { 
+            box-shadow: none !important; 
+            padding: 15mm !important; 
+            width: 210mm !important; 
+            height: 297mm !important; 
+            margin: 0 auto !important; 
+            border-radius: 0 !important; 
+            box-sizing: border-box !important;
+            page-break-after: avoid !important;
+            page-break-before: avoid !important;
+          }
           @page { size: A4; margin: 0; }
         }
       `}</style>

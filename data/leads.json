@@ -13,7 +13,7 @@
     "productCategory": "Website Development",
     "productName": "React Next.js Website",
     "owner": "Shuja",
-    "status": "Quote Sent",
+    "status": "Order Confirmed",
     "priority": "High",
     "expectedValue": 500000,
     "quantity": 1,
@@ -32,6 +32,9 @@
         "productName": "React Next.js Website"
       }
     ],
-    "lastQuoteDate": "2026-04-24T20:07:35.271Z"
+    "lastQuoteDate": "2026-04-24T20:07:35.271Z",
+    "advanceValue": 0,
+    "lastInvoiceDate": "2026-04-25T10:20:26.852Z",
+    "invoiceNo": "INV-0001"
   }
 ]

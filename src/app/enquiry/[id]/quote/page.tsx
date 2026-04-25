@@ -395,7 +395,7 @@ export default function QuotePage() {
       <div className="no-print modern-toolbar">
         <div className="toolbar-left">
           <button className="cool-back-btn" onClick={() => router.back()}><span>←</span> Back</button>
-          <div className="brand-indicator"><span className="dot"></span><h2>PIXELKRAFT SOFTWARE SOLUTIONS</h2></div>
+          <div className="brand-indicator"><span className="dot"></span><h2>PIXELKRAFT</h2></div>
         </div>
 
         <div className="toolbar-center">
