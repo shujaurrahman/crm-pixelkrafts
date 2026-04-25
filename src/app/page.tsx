@@ -312,6 +312,7 @@ export default function Home() {
   const [editingOwnerValue, setEditingOwnerValue] = useState('');
   const [editingProductKey, setEditingProductKey] = useState<string | null>(null);
   const [editingProductValue, setEditingProductValue] = useState('');
+  const [isInvoiceBusy, setIsInvoiceBusy] = useState(false);
 
   const isMounted = useRef(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -1209,6 +1210,47 @@ export default function Home() {
     window.open(waUrl, '_blank');
   };
 
+  const createInvoice = async (lead: Lead) => {
+    setIsInvoiceBusy(true);
+    const invoiceData = {
+      invoiceNo: lead.id.replace('ENQ-', 'INV-'),
+      date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
+      clientName: lead.clientName,
+      address: [lead.city, lead.state, lead.country].filter(Boolean).join(', '),
+      items: getLeadItems(lead).map((item, i) => ({
+        id: i + 1,
+        desc: item.productName,
+        qty: lead.quantity || 1,
+        rate: Math.round(lead.expectedValue / (lead.quantity || 1)),
+        total: lead.expectedValue
+      })),
+      subtotal: lead.expectedValue,
+      discount: 0,
+      tax: 18,
+      total: Math.round(lead.expectedValue * 1.18),
+    };
+
+    try {
+      await fetch(`/api/leads/${lead.id}/invoice`, {
+        method: 'POST',
+        body: JSON.stringify(invoiceData)
+      });
+      toast.success('Invoice generated successfully!');
+      window.open(`/invoice/${lead.id}/view`, '_blank');
+    } catch (e) {
+      toast.error('Failed to generate invoice');
+    } finally {
+      setIsInvoiceBusy(false);
+    }
+  };
+
+  const shareInvoiceOnWhatsApp = (leadId: string) => {
+    const portalUrl = `${window.location.origin}/invoice/${leadId}/view`;
+    const message = `Hello, please find the invoice for your order (${leadId}) here: ${portalUrl}`;
+    const waUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    window.open(waUrl, '_blank');
+  };
+
   const startLeadEdit = (lead: Lead) => {
     const firstItem = Array.isArray(lead.enquiryItems) && lead.enquiryItems.length
       ? lead.enquiryItems[0]
@@ -1609,6 +1651,10 @@ export default function Home() {
           <button className={`nav-item ${tab === 'people' ? 'active' : ''}`} onClick={() => setTab('people')}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
             <span>Team</span>
+          </button>
+          <button className={`nav-item ${tab === 'invoices' ? 'active' : ''}`} onClick={() => setTab('invoices')} title="Invoices">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+            <span>Invoices</span>
           </button>
           <button className={`nav-item ${tab === 'templates' ? 'active' : ''}`} onClick={() => setTab('templates')}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
@@ -3301,6 +3347,55 @@ export default function Home() {
                     <strong>Tip:</strong> Ensure the image is A4 aspect ratio (210x297) for the best fit in the quotation editor.
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tab === 'invoices' && (
+          <div className="mgmt-view">
+            <div className="mgmt-header">
+              <div>
+                <h2 className="mgmt-title">Billing & Invoices</h2>
+                <p className="mgmt-subtitle">Generate and manage invoices for confirmed orders</p>
+              </div>
+            </div>
+
+            <div className="mgmt-card">
+              <div className="mgmt-card-header">
+                <h3 className="mgmt-card-title">Confirmed Orders</h3>
+              </div>
+              <div className="mgmt-list">
+                {leads.filter(l => l.status === 'Order Confirmed').map((l) => (
+                  <div key={l.id} className="mgmt-list-item">
+                    <div className="mgmt-item-icon" style={{ background: 'var(--green-soft)', color: 'var(--green)' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                    </div>
+                    <div className="mgmt-item-body">
+                      <span className="mgmt-item-name">{l.clientName}</span>
+                      <span className="mgmt-item-meta">{l.id} · {money(l.expectedValue)} · {l.brand}</span>
+                    </div>
+                    <div className="mgmt-item-actions">
+                      <button 
+                        className="btn primary" 
+                        onClick={() => router.push(`/enquiry/${l.id}/invoice`)}
+                      >
+                        Edit Invoice
+                      </button>
+                      <button className="btn" onClick={() => window.open(`/invoice/${l.id}/view`, '_blank')}>
+                        View Portal
+                      </button>
+                      <button className="btn" onClick={() => shareInvoiceOnWhatsApp(l.id)} style={{ background: '#22c55e', color: 'white', borderColor: '#22c55e' }}>
+                        WhatsApp
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {!leads.filter(l => l.status === 'Order Confirmed').length && (
+                  <div className="mgmt-empty">
+                    <p>No confirmed orders found. Move leads to "Order Confirmed" status to bill them.</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

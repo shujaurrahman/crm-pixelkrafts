@@ -1,4 +1,4 @@
-export type TabKey = 'dashboard' | 'enquires' | 'new-enquires' | 'products' | 'people' | 'quotes' | 'templates';
+export type TabKey = 'dashboard' | 'enquires' | 'new-enquires' | 'products' | 'people' | 'quotes' | 'templates' | 'invoices';
 export type LeadStatus = 'New' | 'Contacted' | 'Quote Sent' | 'Order Confirmed' | 'Closed Lost';
 export type Priority = 'High' | 'Medium' | 'Low';
 export type BrandName = 'Creative Services' | 'Development' | 'Digital Marketing';
@@ -49,6 +49,10 @@ export interface Lead {
   enquiryItems?: EnquiryLineItem[];
   history?: Array<{ date: string; action: string; prev?: string; next?: string }>;
   createdAt: string;
+  acceptanceSignature?: string;
+  acceptedAt?: string;
+  lastInvoiceDate?: string;
+  invoiceNo?: string;
 }
 
 export interface LeadDraft {
