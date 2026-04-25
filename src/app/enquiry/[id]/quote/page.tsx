@@ -584,34 +584,34 @@ export default function QuotePage() {
         ::selection { background: rgba(37, 99, 235, 0.15); color: #000; }
         .quote-editor { background: #000; min-height: 100vh; font-family: 'Montserrat', sans-serif; padding-bottom: 100px; color: #000; }
         
-        .modern-toolbar { position: sticky; top: 0; background: #000; border-bottom: 1px solid #1e293b; color: white; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; z-index: 2000; }
-        .toolbar-left { display: flex; align-items: center; gap: 20px; }
-        .cool-back-btn { background: #000; border: 1px solid #1e293b; color: #94a3b8; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: 0.2s; }
+        .modern-toolbar { position: sticky; top: 0; background: #000; border-bottom: 1px solid #1e293b; color: white; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; z-index: 2000; flex-wrap: nowrap; overflow-x: auto; }
+        .toolbar-left { display: flex; align-items: center; gap: 20px; flex-shrink: 0; }
+        .cool-back-btn { background: #000; border: 1px solid #1e293b; color: #94a3b8; padding: 8px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: 0.2s; white-space: nowrap; }
         .cool-back-btn:hover { border-color: #3b82f6; color: white; }
-        .brand-indicator { display: flex; align-items: center; gap: 10px; }
+        .brand-indicator { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
         .brand-indicator .dot { width: 8px; height: 8px; background: #2563eb; border-radius: 50%; box-shadow: 0 0 10px #2563eb; }
-        .brand-indicator h2 { font-size: 14px; font-weight: 900; letter-spacing: 2px; margin: 0; color: #f8fafc; }
+        .brand-indicator h2 { font-size: 14px; font-weight: 900; letter-spacing: 2px; margin: 0; color: #f8fafc; white-space: nowrap; }
         
-        .toolbar-center { display: flex; align-items: center; gap: 20px; }
-        .ai-magic-btn { background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 800; font-size: 13px; cursor: pointer; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); transition: 0.2s; }
+        .toolbar-center { display: flex; align-items: center; gap: 20px; flex-shrink: 0; }
+        .ai-magic-btn { background: #2563eb; color: white; border: none; padding: 10px 24px; border-radius: 8px; font-weight: 800; font-size: 13px; cursor: pointer; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); transition: 0.2s; white-space: nowrap; }
         .ai-magic-btn:hover { background: #1d4ed8; transform: translateY(-1px); }
-        .bold-btn { background: #000; border: 1px solid #1e293b; color: white; width: 32px; height: 32px; border-radius: 6px; font-weight: 900; cursor: pointer; }
+        .bold-btn { background: #000; border: 1px solid #1e293b; color: white; width: 36px; height: 36px; border-radius: 6px; font-weight: 900; cursor: pointer; flex-shrink: 0; }
         .bold-btn:hover { border-color: #3b82f6; }
-        .v-divider { width: 1px; height: 24px; background: #1e293b; }
+        .v-divider { width: 1px; height: 24px; background: #1e293b; flex-shrink: 0; }
         
-        .inline-tax-control { display: flex; align-items: center; gap: 10px; }
-        .inline-tax-control label { font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; }
+        .inline-tax-control { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+        .inline-tax-control label { font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; white-space: nowrap; }
         .input-with-symbol { display: flex; align-items: center; background: #000; border: 1px solid #1e293b; border-radius: 6px; padding: 4px 8px; }
-        .input-with-symbol input { background: transparent; border: none; color: white; width: 40px; font-size: 13px; font-weight: 700; outline: none; text-align: center; }
+        .input-with-symbol input { background: transparent; border: none; color: white; width: 45px; font-size: 13px; font-weight: 700; outline: none; text-align: center; }
         
-        .toolbar-right { display: flex; align-items: center; gap: 12px; }
-        .reset-btn { background: transparent; color: #64748b; border: 1px solid #1e293b; padding: 10px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; font-size: 13px; }
+        .toolbar-right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+        .reset-btn { background: transparent; color: #64748b; border: 1px solid #1e293b; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; font-size: 13px; white-space: nowrap; }
         .reset-btn:hover { border-color: #ef4444; color: #ef4444; background: rgba(239, 68, 68, 0.05); }
-        .save-btn { background: #000; color: #3b82f6; border: 1px solid #1e293b; padding: 10px 20px; border-radius: 8px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+        .save-btn { background: #000; color: #3b82f6; border: 1px solid #1e293b; padding: 10px 24px; border-radius: 8px; font-weight: 700; cursor: pointer; transition: 0.2s; white-space: nowrap; }
         .save-btn:hover { border-color: #3b82f6; background: rgba(37, 99, 235, 0.05); }
-        .print-action-btn { background: #2563eb; color: white; border: none; padding: 10px 24px; border-radius: 8px; font-weight: 800; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4); }
+        .print-action-btn { background: #2563eb; color: white; border: none; padding: 10px 28px; border-radius: 8px; font-weight: 800; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4); white-space: nowrap; }
         .print-action-btn:hover { background: #cbd5e1; }
-        .whatsapp-btn { background: #22c55e; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 700; cursor: pointer; display: flex; align-items: center; transition: all 0.2s; }
+        .whatsapp-btn { background: #22c55e; color: white; border: none; padding: 10px 24px; border-radius: 8px; font-weight: 700; cursor: pointer; display: flex; align-items: center; transition: all 0.2s; white-space: nowrap; }
         .whatsapp-btn:hover { background: #16a34a; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3); }
 
         /* --- CRM Themed Modal --- */

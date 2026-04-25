@@ -27,7 +27,8 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
   ]);
   const [discountRate, setDiscountRate] = useState(0);
   const [gstRate, setGstRate] = useState(18);
-  const [bankDetails, setBankDetails] = useState('Account Name: Pixelkraft Software Solutions\nBank: HDFC Bank\nIFSC: HDFC0001234');
+  const [bankDetails, setBankDetails] = useState('A/C: 50100656771132\nIFSC: HDFC0000651\nBranch: NOIDA SEC 26\nAccount Type: SAVINGS');
+  const [notes, setNotes] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -52,13 +53,16 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
         } else if (found) {
           setLead(found);
           setClientName(found.clientName);
-          setToAddress([found.city, found.state, found.country].filter(Boolean).join(', '));
+          const contactInfo = `Ph: ${found.phone || 'N/A'}\nEmail: ${found.email || 'N/A'}`;
+          const locationInfo = [found.city, found.state, found.country].filter(Boolean).join(', ');
+          setToAddress(`${locationInfo}\n${contactInfo}`);
+          setSubject(`Invoice for Advance - ${found.productName || 'Project'}`);
           setItems([{
             id: 1,
-            desc: found.productName || 'General Services',
-            qty: found.quantity || 1,
-            rate: Math.round(found.expectedValue / (found.quantity || 1)),
-            total: found.expectedValue
+            desc: `Advance for project ${found.productName || 'Intimation'} - as per project scope and discussion.`,
+            qty: 1,
+            rate: Math.round(found.expectedValue * 0.5), // Default 50% advance
+            total: Math.round(found.expectedValue * 0.5)
           }]);
         }
       } catch (e) {
@@ -102,6 +106,7 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
     const invoiceData = {
       invoiceNo,
       date: invoiceDate,
+      lastSaved: new Date().toISOString(),
       clientName,
       address: toAddress,
       subject,
@@ -240,12 +245,21 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
               <p className="val">{numberToWords(Math.round(grandTotal))}</p>
             </div>
             <div className="bank-details">
-              <h4 className="label">Payment Info:</h4>
+              <h4 className="label">Bank Details:</h4>
               <textarea 
                 value={bankDetails} 
                 onChange={e => setBankDetails(e.target.value)}
                 rows={4}
               />
+              <div className="upi-section">
+                <div className="upi-meta">
+                  <h4 className="label">Scan to Pay via UPI:</h4>
+                  <p className="upi-id">7579966178@hdfc</p>
+                </div>
+                <div className="upi-scanner-wrap">
+                  <img src="/UPI.jpeg" alt="UPI Scanner" className="upi-img" />
+                </div>
+              </div>
             </div>
           </div>
           <div className="totals-col">
@@ -299,65 +313,85 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
         .btn-view { background: #1e293b; color: white; border: 1px solid #334155; padding: 8px 24px; border-radius: 6px; font-weight: 700; cursor: pointer; transition: 0.2s; }
         .btn-view:hover { background: #0f172a; }
 
-        .invoice-page { width: 210mm; min-height: 297mm; background: white; padding: 15mm; margin-top: 40px; box-shadow: 0 20px 50px rgba(0,0,0,0.1); border-radius: 4px; display: flex; flex-direction: column; }
+        .invoice-page { width: 210mm; min-height: 297mm; background: white; padding: 25mm; margin-top: 40px; box-shadow: 0 20px 50px rgba(0,0,0,0.1); border-radius: 4px; display: flex; flex-direction: column; color: #000 !important; }
+        .invoice-page * { color: #000 !important; }
         
-        .header { display: flex; justify-content: space-between; border-bottom: 2.5px solid #0f172a; padding-bottom: 20px; margin-bottom: 40px; }
-        .branding h1 { font-size: 24px; font-weight: 900; color: #0f172a; margin: 0; outline: none; }
-        .msme-badge { display: inline-block; background: #fef3c7; color: #92400e; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 4px; margin: 4px 0; text-transform: uppercase; }
-        .company-details { font-size: 12px; color: #64748b; margin: 4px 0; }
+        .header { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 3px solid #000; padding-bottom: 30px; margin-bottom: 50px; align-items: start; gap: 40px; width: 100%; }
+        .branding { display: flex; flex-direction: column; gap: 10px; }
+        .branding h1 { font-size: 28px; font-weight: 900; margin: 0; outline: none; line-height: 1.1; color: #000 !important; }
+        .msme-badge { display: inline-block; background: #000; color: #fff !important; font-size: 10px; font-weight: 900; padding: 4px 10px; border-radius: 2px; align-self: flex-start; text-transform: uppercase; margin: 5px 0; }
+        .msme-badge * { color: #fff !important; }
+        .company-details { font-size: 13px; color: #000 !important; margin: 0; line-height: 1.6; font-weight: 600; }
         
-        .title { font-size: 32px; font-weight: 900; color: #0f172a; margin: 0 0 16px 0; text-align: right; letter-spacing: 2px; }
-        .meta-grid { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
-        .meta-item { font-size: 13px; display: flex; gap: 8px; }
-        .meta-item .label { font-weight: 700; color: #64748b; }
-        .meta-item .val { font-weight: 700; color: #0f172a; outline: none; }
+        .meta { display: flex; flex-direction: column; align-items: flex-end; gap: 20px; text-align: right; }
+        .title { font-size: 40px; font-weight: 950; margin: 0; letter-spacing: 4px; line-height: 1; color: #000 !important; }
+        .meta-grid { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; width: 100%; }
+        .meta-item { font-size: 14px; display: flex; gap: 12px; justify-content: flex-end; width: 100%; }
+        .meta-item .label { font-weight: 900; min-width: 100px; text-align: right; }
+        .meta-item .val { font-weight: 900; outline: none; border-bottom: 2px solid #eee; min-width: 150px; text-align: left; padding: 0 4px; }
+        .meta-item .val:hover, .meta-item .val:focus { background: #f8f8f8; border-color: #000; }
 
-        .billing { margin-bottom: 40px; }
-        .section-title { font-size: 11px; font-weight: 800; text-transform: uppercase; color: #64748b; margin-bottom: 8px; }
-        .client-name { font-size: 18px; font-weight: 800; color: #0f172a; margin: 0; outline: none; }
-        .client-address { font-size: 13px; color: #475569; margin: 4px 0; outline: none; white-space: pre-wrap; }
+        .billing { margin-bottom: 50px; }
+        .section-title { font-size: 13px; font-weight: 950; text-transform: uppercase; margin-bottom: 15px; border-bottom: 3px solid #000; display: inline-block; padding-bottom: 4px; }
+        .client-name { font-size: 22px; font-weight: 950; margin: 0; outline: none; border-bottom: 2px solid #eee; display: inline-block; }
+        .client-name:hover, .client-name:focus { background: #f8f8f8; border-color: #000; }
+        .client-address { font-size: 15px; margin: 10px 0; outline: none; white-space: pre-wrap; line-height: 1.7; font-weight: 600; border: 2px solid transparent; padding: 4px; }
+        .client-address:hover, .client-address:focus { background: #f8f8f8; border-color: #eee; border-style: dashed; }
 
-        .subject-area { margin-bottom: 30px; font-size: 14px; border-left: 4px solid #0f172a; padding-left: 12px; }
-        .editable-subject { outline: none; font-weight: 600; }
+        .subject-area { margin-bottom: 45px; font-size: 16px; border-left: 6px solid #000; padding: 12px 20px; background: #fafafa; border-radius: 0 4px 4px 0; }
+        .subject-area strong { font-weight: 950; }
+        .editable-subject { outline: none; font-weight: 900; border-bottom: 2px solid transparent; }
+        .editable-subject:hover, .editable-subject:focus { border-color: #000; background: #fff; }
 
-        .items-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        .items-table th { background: #f8fafc; text-align: left; padding: 12px; font-size: 11px; font-weight: 800; text-transform: uppercase; color: #64748b; border-bottom: 2px solid #0f172a; }
-        .items-table td { padding: 10px; font-size: 14px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+        .items-table { width: 100%; border-collapse: collapse; margin-bottom: 40px; border: 2px solid #000; }
+        .items-table th { background: #000; text-align: left; padding: 16px 12px; font-size: 13px; font-weight: 950; text-transform: uppercase; color: #fff !important; border: 1px solid #000; }
+        .items-table th * { color: #fff !important; }
+        .items-table td { padding: 14px 12px; font-size: 15px; border: 1px solid #000; vertical-align: top; font-weight: 700; color: #000 !important; }
         .items-table .right { text-align: right; }
         
-        .items-table textarea { width: 100%; border: none; background: transparent; font-family: inherit; font-size: 14px; font-weight: 600; color: #334155; resize: none; outline: none; padding: 0; }
-        .items-table input { width: 100%; border: none; background: #f8fafc; border-radius: 4px; padding: 4px 8px; font-family: inherit; font-size: 14px; font-weight: 700; color: #0f172a; text-align: right; outline: none; }
-        .price-input { display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
-        .price-input span { font-weight: 700; color: #64748b; }
+        .items-table textarea { width: 100%; border: none; background: transparent; font-family: inherit; font-size: 15px; font-weight: 700; color: #000 !important; resize: none; outline: none; padding: 0; min-height: 45px; line-height: 1.5; }
+        .items-table input { width: 100%; border: 1px solid transparent; background: #f9f9f9; border-radius: 4px; padding: 8px; font-family: inherit; font-size: 15px; font-weight: 900; color: #000 !important; text-align: right; outline: none; }
+        .items-table input:hover, .items-table input:focus { border-color: #000; background: #fff; }
+        .price-input { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+        .price-input span { font-weight: 900; }
         
-        .btn-del { color: #ef4444; background: transparent; border: none; font-size: 20px; cursor: pointer; }
-        .btn-add { background: #f1f5f9; color: #475569; border: 1px dashed #cbd5e1; padding: 8px 16px; border-radius: 6px; width: 100%; font-weight: 700; cursor: pointer; margin-bottom: 40px; }
-        .btn-add:hover { background: #e2e8f0; color: #1e293b; }
+        .btn-del { color: #ff0000 !important; background: transparent; border: none; font-size: 24px; cursor: pointer; font-weight: 950; padding: 0 10px; }
+        .btn-add { background: #000; color: #fff !important; border: none; padding: 15px 30px; border-radius: 8px; width: 100%; font-weight: 900; cursor: pointer; margin-bottom: 60px; text-transform: uppercase; letter-spacing: 2px; transition: 0.2s; box-shadow: 0 4px 0 #333; }
+        .btn-add:hover { background: #222; transform: translateY(-1px); box-shadow: 0 5px 0 #333; }
+        .btn-add:active { transform: translateY(1px); box-shadow: 0 2px 0 #333; }
 
-        .footer { display: grid; grid-template-columns: 1.2fr 1fr; gap: 60px; margin-top: auto; border-top: 2px solid #0f172a; padding-top: 30px; }
-        .amount-words { margin-bottom: 30px; }
-        .amount-words .label { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; }
-        .amount-words .val { font-size: 13px; font-weight: 700; color: #0f172a; margin: 4px 0; text-transform: capitalize; }
+        .footer { display: grid; grid-template-columns: 1.3fr 1fr; gap: 80px; margin-top: auto; border-top: 4px solid #000; padding-top: 50px; }
+        .amount-words { margin-bottom: 50px; }
+        .amount-words .label { font-size: 12px; font-weight: 950; text-transform: uppercase; margin-bottom: 8px; display: block; }
+        .amount-words .val { font-size: 15px; font-weight: 900; margin: 8px 0; text-transform: capitalize; border-bottom: 2px solid #eee; padding-bottom: 8px; line-height: 1.4; }
         
-        .bank-details .label { font-size: 10px; font-weight: 800; margin-bottom: 8px; color: #0f172a; text-transform: uppercase; }
-        .bank-details textarea { width: 100%; border: 1px solid #f1f5f9; background: #f8fafc; padding: 12px; border-radius: 8px; font-family: inherit; font-size: 12px; color: #475569; outline: none; resize: none; }
+        .bank-details .label { font-size: 12px; font-weight: 950; margin-bottom: 15px; text-transform: uppercase; display: block; }
+        .bank-details textarea { width: 100%; border: 2px solid #eee; background: #fff; padding: 20px; border-radius: 10px; font-family: inherit; font-size: 14px; color: #000 !important; outline: none; resize: none; margin-bottom: 25px; font-weight: 800; line-height: 1.7; }
+        .bank-details textarea:focus { border-color: #000; background: #fafafa; }
 
-        .total-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; font-size: 14px; }
-        .total-row .label { font-weight: 700; color: #64748b; }
-        .total-row .val { font-weight: 800; color: #0f172a; }
-        .grand-total { border-top: 2px solid #0f172a; margin-top: 10px; padding-top: 16px; }
-        .grand-total .label { font-size: 18px; font-weight: 900; color: #0f172a; }
-        .grand-total .val { font-size: 24px; font-weight: 900; color: #0f172a; }
+        .upi-section { display: flex; align-items: center; gap: 25px; background: #f9f9f9; padding: 20px; border-radius: 12px; border: 3px solid #000; }
+        .upi-meta { flex: 1; }
+        .upi-id { font-size: 15px; font-weight: 950; margin: 6px 0; color: #000 !important; }
+        .upi-scanner-wrap { width: 85px; height: 85px; background: white; border: 3px solid #000; border-radius: 8px; padding: 6px; }
+        .upi-img { width: 100%; height: 100%; object-fit: contain; }
+
+        .total-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; font-size: 16px; border-bottom: 2px solid #f0f0f0; }
+        .total-row .label { font-weight: 900; }
+        .total-row .val { font-weight: 950; }
+        .grand-total { border-top: 4px solid #000; border-bottom: none; margin-top: 20px; padding-top: 25px; }
+        .grand-total .label { font-size: 22px; font-weight: 950; }
+        .grand-total .val { font-size: 32px; font-weight: 950; }
         
-        .total-row .input-group { display: flex; align-items: center; background: #f8fafc; border-radius: 6px; padding: 4px 8px; width: 80px; }
-        .total-row .input-group input { width: 100%; border: none; background: transparent; text-align: right; font-weight: 800; font-size: 14px; outline: none; }
-        .total-row .input-group span { font-weight: 700; color: #64748b; font-size: 12px; margin-left: 4px; }
+        .total-row .input-group { display: flex; align-items: center; background: #f0f0f0; border-radius: 8px; padding: 8px 15px; width: 120px; border: 2px solid transparent; }
+        .total-row .input-group:focus-within { border-color: #000; background: #fff; }
+        .total-row .input-group input { width: 100%; border: none; background: transparent; text-align: right; font-weight: 950; font-size: 16px; outline: none; color: #000 !important; }
+        .total-row .input-group span { font-weight: 950; font-size: 14px; margin-left: 8px; }
 
-        .signature-area { display: flex; justify-content: flex-end; margin-top: 60px; }
-        .auth-sign { text-align: center; width: 220px; }
-        .sign-line { border-bottom: 1.5px solid #0f172a; margin-bottom: 8px; height: 40px; }
-        .auth-sign p { font-size: 12px; font-weight: 700; margin: 0; }
-        .comp-label { font-size: 10px !important; color: #64748b; }
+        .signature-area { display: flex; justify-content: flex-end; margin-top: 100px; }
+        .auth-sign { text-align: center; width: 280px; }
+        .sign-line { border-bottom: 3px solid #000; margin-bottom: 12px; height: 70px; }
+        .auth-sign p { font-size: 15px; font-weight: 950; margin: 0; }
+        .comp-label { font-size: 12px !important; font-weight: 800 !important; margin-top: 4px !important; }
 
         .loading { height: 100vh; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #0f172a; }
 

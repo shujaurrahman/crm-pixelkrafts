@@ -147,9 +147,18 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
               <p className="val">{numberToWords(Math.round(grandTotal))}</p>
             </div>
             <div className="bank-details">
-              <h4 className="label">Payment Info:</h4>
-              <div style={{ whiteSpace: 'pre-wrap' }}>
-                {invoice.bankDetails || 'Account Name: Pixelkraft Software Solutions\nBank: HDFC Bank\nIFSC: HDFC0001234'}
+              <h4 className="label">Bank Details:</h4>
+              <div style={{ whiteSpace: 'pre-wrap', marginBottom: '16px' }}>
+                {invoice.bankDetails || 'A/C: 50100656771132\nIFSC: HDFC0000651\nBranch: NOIDA SEC 26\nAccount Type: SAVINGS'}
+              </div>
+              <div className="upi-section" style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                <div className="upi-meta" style={{ flex: 1 }}>
+                  <h4 className="label" style={{ fontSize: '10px', fontWeight: 800, marginBottom: '4px', color: '#0f172a', textTransform: 'uppercase' }}>Scan to Pay via UPI:</h4>
+                  <p className="upi-id" style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', margin: '4px 0' }}>7579966178@hdfc</p>
+                </div>
+                <div className="upi-scanner-wrap" style={{ width: '60px', height: '60px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '4px', padding: '4px', overflow: 'hidden' }}>
+                  <img src="/UPI.jpeg" alt="UPI Scanner" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                </div>
               </div>
             </div>
           </div>
@@ -185,55 +194,59 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
       </div>
 
       <style jsx global>{`
-        body { background: #f1f5f9; margin: 0; font-family: 'Inter', sans-serif; color: #1e293b; }
+        body { background: #f1f5f9; margin: 0; font-family: 'Inter', sans-serif; color: #000; }
         .invoice-container { display: flex; flex-direction: column; align-items: center; padding: 40px 0; }
         .action-bar { width: 210mm; margin-bottom: 20px; display: flex; justify-content: flex-end; }
-        .btn-print { background: #0f172a; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; }
+        .btn-print { background: #000; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; }
         
         .a4-page { 
-          width: 210mm; min-height: 297mm; background: white; padding: 20mm;
+          width: 210mm; min-height: 297mm; background: white; padding: 25mm;
           box-shadow: 0 10px 25px rgba(0,0,0,0.1); border-radius: 4px;
           display: flex; flex-direction: column;
+          color: #000 !important;
         }
+        .a4-page * { color: #000 !important; }
 
-        .invoice-header { display: flex; justify-content: space-between; border-bottom: 2px solid #0f172a; padding-bottom: 20px; margin-bottom: 40px; }
-        .company-name { font-size: 24px; font-weight: 900; color: #0f172a; margin: 0; }
-        .msme-badge { display: inline-block; background: #fef3c7; color: #92400e; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 4px; margin: 4px 0; text-transform: uppercase; }
-        .company-details { font-size: 12px; color: #64748b; margin: 4px 0; }
+        .invoice-header { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 3px solid #000; padding-bottom: 25px; margin-bottom: 50px; align-items: start; gap: 40px; }
+        .company-name { font-size: 28px; font-weight: 950; color: #000 !important; margin: 0; line-height: 1.1; }
+        .msme-badge { display: inline-block; background: #000; color: #fff !important; font-size: 10px; font-weight: 900; padding: 4px 10px; border-radius: 2px; align-self: flex-start; text-transform: uppercase; margin: 5px 0; }
+        .msme-badge * { color: #fff !important; }
+        .company-details { font-size: 13px; color: #000 !important; margin: 0; line-height: 1.6; font-weight: 600; }
         
-        .doc-title { font-size: 32px; font-weight: 900; color: #0f172a; margin: 0 0 16px 0; text-align: right; letter-spacing: 2px; }
-        .meta-grid { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
-        .meta-item { font-size: 13px; display: flex; gap: 8px; }
-        .meta-item .label { font-weight: 700; color: #64748b; }
-        .meta-item .val { font-weight: 700; color: #0f172a; }
+        .doc-title { font-size: 40px; font-weight: 950; color: #000 !important; margin: 0 0 16px 0; text-align: right; letter-spacing: 3px; line-height: 1; }
+        .meta-grid { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+        .meta-item { font-size: 14px; display: flex; gap: 12px; justify-content: flex-end; width: 100%; }
+        .meta-item .label { font-weight: 950; min-width: 100px; text-align: right; }
+        .meta-item .val { font-weight: 900; min-width: 150px; text-align: left; }
 
-        .billing-section { margin-bottom: 40px; }
-        .section-title { font-size: 11px; font-weight: 800; text-transform: uppercase; color: #64748b; margin-bottom: 8px; }
-        .client-name { font-size: 18px; font-weight: 800; color: #0f172a; margin: 0; }
-        .client-address { font-size: 13px; color: #475569; margin: 4px 0; white-space: pre-wrap; }
+        .billing-section { margin-bottom: 50px; }
+        .section-title { font-size: 13px; font-weight: 950; text-transform: uppercase; margin-bottom: 15px; border-bottom: 3px solid #000; display: inline-block; padding-bottom: 4px; }
+        .client-name { font-size: 22px; font-weight: 950; color: #000 !important; margin: 0; }
+        .client-address { font-size: 15px; color: #000 !important; margin: 10px 0; white-space: pre-wrap; line-height: 1.7; font-weight: 600; }
 
-        .invoice-table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
-        .invoice-table th { background: #f8fafc; text-align: left; padding: 12px; font-size: 11px; font-weight: 800; text-transform: uppercase; color: #64748b; border-bottom: 1px solid #e2e8f0; }
-        .invoice-table td { padding: 12px; font-size: 14px; border-bottom: 1px solid #f1f5f9; color: #334155; }
+        .invoice-table { width: 100%; border-collapse: collapse; margin-bottom: 40px; border: 2px solid #000; }
+        .invoice-table th { background: #000; text-align: left; padding: 16px 12px; font-size: 13px; font-weight: 950; text-transform: uppercase; color: #fff !important; border: 1px solid #000; }
+        .invoice-table th * { color: #fff !important; }
+        .invoice-table td { padding: 14px 12px; font-size: 15px; border: 1px solid #000; color: #000 !important; font-weight: 700; }
         .invoice-table .right { text-align: right; }
 
-        .invoice-footer { display: grid; grid-template-columns: 1.5fr 1fr; gap: 40px; margin-top: auto; border-top: 1px solid #e2e8f0; padding-top: 20px; }
-        .amount-words { margin-bottom: 20px; }
-        .amount-words .label { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; }
-        .amount-words .val { font-size: 13px; font-weight: 700; color: #0f172a; margin: 4px 0; text-transform: capitalize; }
+        .invoice-footer { display: grid; grid-template-columns: 1.3fr 1fr; gap: 80px; margin-top: auto; border-top: 4px solid #000; padding-top: 50px; }
+        .amount-words { margin-bottom: 40px; }
+        .amount-words .label { font-size: 12px; font-weight: 950; text-transform: uppercase; margin-bottom: 8px; display: block; }
+        .amount-words .val { font-size: 15px; font-weight: 900; color: #000 !important; margin: 8px 0; text-transform: capitalize; border-bottom: 2px solid #eee; padding-bottom: 8px; line-height: 1.4; }
         
-        .bank-details { font-size: 11px; color: #64748b; line-height: 1.5; }
-        .bank-details .label { font-size: 10px; font-weight: 800; margin-bottom: 4px; color: #0f172a; text-transform: uppercase; }
-        .bank-details p { margin: 0; }
-
-        .total-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; color: #475569; }
-        .grand-total { border-top: 2px solid #0f172a; margin-top: 8px; padding-top: 12px; font-size: 18px; font-weight: 900; color: #0f172a; }
+        .bank-details { font-size: 14px; color: #000 !important; line-height: 1.7; font-weight: 700; }
+        .bank-details .label { font-size: 12px; font-weight: 950; margin-bottom: 15px; color: #000 !important; text-transform: uppercase; display: block; }
         
-        .signature-area { display: flex; justify-content: flex-end; margin-top: 60px; }
-        .auth-sign { text-align: center; width: 200px; }
-        .sign-line { border-bottom: 1px solid #0f172a; margin-bottom: 8px; height: 40px; }
-        .auth-sign p { font-size: 12px; font-weight: 700; margin: 0; }
-        .comp-label { font-size: 10px !important; color: #64748b; }
+        .total-row { display: flex; justify-content: space-between; padding: 10px 0; font-size: 16px; color: #000 !important; font-weight: 900; border-bottom: 2px solid #f0f0f0; }
+        .grand-total { border-top: 4px solid #000; margin-top: 20px; padding-top: 25px; font-size: 22px; font-weight: 950; }
+        .grand-total span:last-child { font-size: 32px; }
+        
+        .signature-area { display: flex; justify-content: flex-end; margin-top: 100px; }
+        .auth-sign { text-align: center; width: 280px; }
+        .sign-line { border-bottom: 3px solid #000; margin-bottom: 12px; height: 70px; }
+        .auth-sign p { font-size: 15px; font-weight: 950; color: #000 !important; margin: 0; }
+        .comp-label { font-size: 12px !important; font-weight: 800 !important; margin-top: 4px !important; }
 
         .loading, .error { height: 100vh; display: flex; align-items: center; justify-content: center; font-weight: 700; }
         .error { color: #ef4444; }
