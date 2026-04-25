@@ -172,6 +172,19 @@ export default function Home() {
   }, []);
 
   const [tab, setTab] = useState<TabKey>('dashboard');
+
+  useEffect(() => {
+    const savedTab = localStorage.getItem('crm-active-tab');
+    if (savedTab) {
+      setTab(savedTab as TabKey);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (mounted) {
+      localStorage.setItem('crm-active-tab', tab);
+    }
+  }, [tab, mounted]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [isTemplateBusy, setIsTemplateBusy] = useState(false);
   const [isAddProductMenuOpen, setIsAddProductMenuOpen] = useState(false);
@@ -679,7 +692,7 @@ export default function Home() {
   };
 
   const syncClientTypes = async (nextClientTypes: string[]) => {
-    setSyncing(true);
+    setSyncingStatus(true);
     try {
       await requestJson<{ ok: true; clientTypes: string[] }>('/api/client-types', {
         method: 'PUT',
@@ -695,7 +708,7 @@ export default function Home() {
   };
 
   const syncOwners = async (nextOwners: string[]) => {
-    setSyncing(true);
+    setSyncingStatus(true);
     try {
       await requestJson<{ ok: true; owners: string[] }>('/api/owners', {
         method: 'PUT',
@@ -711,7 +724,7 @@ export default function Home() {
   };
 
   const syncProducts = async (nextProducts: Record<BrandName, ProductItem[]>) => {
-    setSyncing(true);
+    setSyncingStatus(true);
     try {
       await requestJson<{ ok: true }>('/api/products', {
         method: 'PUT',
@@ -1190,7 +1203,7 @@ export default function Home() {
   };
 
   const shareOnWhatsApp = (leadId: string) => {
-    const portalUrl = `${window.location.origin}/quote/${leadId.replace(/[^a-zA-Z0-9-]/g, '_')}/view`;
+    const portalUrl = `${window.location.origin}/quote/${leadId}/view`;
     const message = `Hello, please find the quotation for your enquiry (${leadId}) here: ${portalUrl}`;
     const waUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(waUrl, '_blank');
@@ -2032,7 +2045,12 @@ export default function Home() {
                                 </td>
                                 <td>{requestedNos}</td>
                                 <td className="status-cell">
-                                  <span className={`status status-pill ${statusClass(lead.status)}`}>{lead.status}</span>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    <span className={`status status-pill ${statusClass(lead.status)}`}>{lead.status}</span>
+                                    {lead.acceptanceSignature && (
+                                      <span className="status-badge won" style={{ fontSize: '10px', padding: '2px 8px' }}>✓ Signed</span>
+                                    )}
+                                  </div>
                                 </td>
                                 <td>{lead.poNumber || '-'}</td>
                                 <td>
@@ -2291,7 +2309,12 @@ export default function Home() {
                                 onDragStart={(e) => e.dataTransfer.setData('leadId', lead.id)}
                                 onClick={() => router.push(`/enquiry/${lead.id}`)}
                               >
-                                <div className="kanban-card-title">{lead.clientName}</div>
+                                <div className="kanban-card-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  {lead.clientName}
+                                  {lead.acceptanceSignature && (
+                                    <span className="status-badge won" style={{ fontSize: '9px', padding: '1px 6px' }}>✓ Signed</span>
+                                  )}
+                                </div>
                                 <div className="kanban-card-meta">
                                   <span>{lead.brand}</span>
                                   <span style={{ fontWeight: 600, color: 'var(--text)' }}>{money(lead.expectedValue)}</span>
@@ -2756,10 +2779,13 @@ export default function Home() {
                         <span className="mgmt-item-meta">{l.id} · {l.brand} · {l.status}</span>
                       </div>
                       <div className="mgmt-item-actions">
-                        {l.quoteUrl || l.status === 'Quote Sent' ? (
+                        {l.quoteUrl || l.status === 'Quote Sent' || l.status === 'Order Confirmed' ? (
                           <>
                             <button className="btn primary" onClick={() => router.push(`/quote/${l.id}/view`)}>
                               View Quote
+                            </button>
+                            <button className="btn" onClick={() => router.push(`/enquiry/${l.id}/quote`)}>
+                              Edit Quote
                             </button>
                             <button className="btn" onClick={() => shareOnWhatsApp(l.id)} style={{ background: '#22c55e', color: 'white', borderColor: '#22c55e' }}>
                               WhatsApp

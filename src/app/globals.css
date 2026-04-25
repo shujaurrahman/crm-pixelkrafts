@@ -323,6 +323,29 @@ html[data-theme='dark'] .brand-name {
   border-radius: 50%;
 }
 
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 12px;
+  border-radius: 30px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.status-badge.won {
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+.status-badge.pending {
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+
 /* Table Styles */
 .panel {
   background: var(--paper);

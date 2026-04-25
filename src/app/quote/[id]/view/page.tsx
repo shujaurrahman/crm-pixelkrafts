@@ -14,6 +14,7 @@ export default function ClientQuotePortal({ params: rawParams }: { params: Promi
   const [loading, setLoading] = useState(true);
   const [accepted, setAccepted] = useState(false);
   const [signature, setSignature] = useState('');
+  const [acceptedDate, setAcceptedDate] = useState('');
   const [letterhead, setLetterhead] = useState('');
 
   const buildFallbackQuote = (lead: any) => {
@@ -84,6 +85,12 @@ export default function ClientQuotePortal({ params: rawParams }: { params: Promi
           setQuote(buildFallbackQuote(fallbackLead));
         }
 
+        if (fallbackLead?.acceptanceSignature) {
+          setAccepted(true);
+          setSignature(fallbackLead.acceptanceSignature);
+          setAcceptedDate(fallbackLead.acceptedAt || '');
+        }
+
         if (qData.error && !fallbackLead) {
           throw new Error(qData.error);
         }
@@ -116,6 +123,7 @@ export default function ClientQuotePortal({ params: rawParams }: { params: Promi
       });
       if (res.ok) {
         setAccepted(true);
+        setAcceptedDate(new Date().toISOString());
         toast.success('Quotation Accepted Successfully!');
       }
     } catch (e) {
@@ -372,7 +380,7 @@ export default function ClientQuotePortal({ params: rawParams }: { params: Promi
                       {accepted ? (
                         <div className="digital-sig-block">
                           <div className="sig-name">{signature}</div>
-                          <div className="sig-meta">Digitally Accepted on {new Date().toLocaleDateString()}</div>
+                          <div className="sig-meta">Digitally Accepted on {acceptedDate ? new Date(acceptedDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : new Date().toLocaleDateString()}</div>
                         </div>
                       ) : (
                         <div className="sig-stamp">Pending Client Signature</div>

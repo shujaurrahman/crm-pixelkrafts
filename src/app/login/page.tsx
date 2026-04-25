@@ -15,7 +15,7 @@ export default function LoginPage() {
     setIsLoading(true);
 
     // Hardcoded credentials as requested
-    if (email === 'admin@pixelkraft.com' && password === '@pixelkraft2026') {
+    if (email === 'admin@pixelkrafts.in' && password === '@pixelkrafts2026') {
       // Set a simple cookie for authentication
       document.cookie = 'crm-auth=true; path=/; max-age=86400'; // 24 hours
       toast.success('Welcome back, Shuja!');
@@ -40,7 +40,7 @@ export default function LoginPage() {
             <label>Email Address</label>
             <input 
               type="email" 
-              placeholder="admin@pixelkraft.com" 
+              placeholder="Admin" 
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
