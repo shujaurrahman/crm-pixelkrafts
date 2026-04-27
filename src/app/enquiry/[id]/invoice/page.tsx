@@ -321,7 +321,6 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
         </section>
 
         <div className="subject-area">
-          <strong>Subject: </strong>
           <span className="editable-subject" contentEditable suppressContentEditableWarning onBlur={e => setSubject(e.currentTarget.innerText)}>{subject}</span>
         </div>
 

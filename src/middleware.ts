@@ -16,8 +16,8 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 2. Allow public Quotation View Portal
-  if (pathname.startsWith('/quote/') && pathname.endsWith('/view')) {
+  // 2. Allow public Quotation and Invoice View Portals
+  if ((pathname.startsWith('/quote/') || pathname.startsWith('/invoice/')) && pathname.endsWith('/view')) {
     return NextResponse.next();
   }
 
