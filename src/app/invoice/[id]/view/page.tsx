@@ -12,6 +12,13 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
   const [invoice, setInvoice] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  // Defaults
+  const defaultCompanyName = 'Pixelkraft Software Solutions';
+  const defaultCompanyAddress = '805 Wasil Pilibhit 262001 UP India';
+  const defaultCompanyEmail = 'official@pixelkrafts.in';
+  const defaultCompanyPhone = '+917579966178';
+  const defaultMsmeNumber = 'UDYAM-UP-60-0038284';
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -52,7 +59,7 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
           // Fallback to lead data if invoice not found
           const leadsRes = await fetch('/api/leads', { cache: 'no-store' });
           const leadsData = await leadsRes.json();
-          const lead = leadsData.leads?.find((l: any) => l.id === id);
+          const lead = leadsData.leads?.find((l: any) => l.id === targetId);
           
           if (lead) {
             setInvoice({
@@ -85,7 +92,7 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
       }
     };
     fetchData();
-  }, [id]);
+  }, [rawId]);
 
   if (loading) return <div className="loading">Loading Invoice...</div>;
   if (!invoice) return <div className="error">Invoice not found.</div>;
