@@ -21,6 +21,8 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
   const [companyAddress, setCompanyAddress] = useState('805 Wasil Pilibhit 262001 UP India');
   const [companyEmail, setCompanyEmail] = useState('official@pixelkrafts.in');
   const [companyPhone, setCompanyPhone] = useState('+917579966178');
+  const [companyWebsite, setCompanyWebsite] = useState('www.pixelkrafts.in');
+  const [companyInstagram, setCompanyInstagram] = useState('@pixelkrafts_in');
   const [msmeNumber, setMsmeNumber] = useState('UDYAM-UP-60-0038284');
 
   // --- Editable Invoice Data ---
@@ -65,6 +67,8 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
           if (invData.companyAddress) setCompanyAddress(invData.companyAddress);
           if (invData.companyEmail) setCompanyEmail(invData.companyEmail);
           if (invData.companyPhone) setCompanyPhone(invData.companyPhone);
+          if (invData.companyWebsite) setCompanyWebsite(invData.companyWebsite);
+          if (invData.companyInstagram) setCompanyInstagram(invData.companyInstagram);
           if (invData.msmeNumber) setMsmeNumber(invData.msmeNumber);
           if (invData.isPaid) setIsPaid(true);
           if (invData.paidAt) setPaidAt(invData.paidAt);
@@ -139,6 +143,8 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
       companyAddress,
       companyEmail,
       companyPhone,
+      companyWebsite,
+      companyInstagram,
       msmeNumber,
       isPaid,
       paidAt,
@@ -192,6 +198,8 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
       companyAddress,
       companyEmail,
       companyPhone,
+      companyWebsite,
+      companyInstagram,
       msmeNumber,
       isPaid: true,
       paidAt: indianTime
@@ -293,6 +301,25 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
                   className="editable-detail"
                 >
                   {companyPhone}
+                </span>
+              </div>
+              <div className="contact-row">
+                <span 
+                  contentEditable 
+                  suppressContentEditableWarning 
+                  onBlur={e => setCompanyWebsite(e.currentTarget.innerText)}
+                  className="editable-detail"
+                >
+                  {companyWebsite}
+                </span>
+                <span className="separator">|</span>
+                <span 
+                  contentEditable 
+                  suppressContentEditableWarning 
+                  onBlur={e => setCompanyInstagram(e.currentTarget.innerText)}
+                  className="editable-detail"
+                >
+                  {companyInstagram}
                 </span>
               </div>
             </div>

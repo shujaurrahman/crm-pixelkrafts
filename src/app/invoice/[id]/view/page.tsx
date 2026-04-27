@@ -17,6 +17,8 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
   const defaultCompanyAddress = '805 Wasil Pilibhit 262001 UP India';
   const defaultCompanyEmail = 'official@pixelkrafts.in';
   const defaultCompanyPhone = '+917579966178';
+  const defaultCompanyWebsite = 'www.pixelkrafts.in';
+  const defaultCompanyInstagram = '@pixelkrafts_in';
   const defaultMsmeNumber = 'UDYAM-UP-60-0038284';
 
   useEffect(() => {
@@ -146,6 +148,8 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
   const companyAddress = invoice.companyAddress || defaultCompanyAddress;
   const companyEmail = invoice.companyEmail || defaultCompanyEmail;
   const companyPhone = invoice.companyPhone || defaultCompanyPhone;
+  const companyWebsite = invoice.companyWebsite || defaultCompanyWebsite;
+  const companyInstagram = invoice.companyInstagram || defaultCompanyInstagram;
   const msmeNumber = invoice.msmeNumber || defaultMsmeNumber;
 
   return (
@@ -183,6 +187,11 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
                 <span>{companyEmail}</span>
                 <span className="separator">|</span>
                 <span>{companyPhone}</span>
+              </div>
+              <div className="contact-row">
+                <a href={`https://${companyWebsite}`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', color: 'inherit' }}>{companyWebsite}</a>
+                <span className="separator">|</span>
+                <a href={`https://instagram.com/${companyInstagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', color: 'inherit' }}>{companyInstagram}</a>
               </div>
             </div>
           </div>
