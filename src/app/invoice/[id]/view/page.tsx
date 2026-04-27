@@ -94,7 +94,45 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
     fetchData();
   }, [rawId]);
 
-  if (loading) return <div className="loading">Loading Invoice...</div>;
+  if (loading) return (
+    <div className="invoice-container">
+      <div className="invoice-box a4-page skeleton-page">
+        <div className="skeleton-header">
+          <div className="skeleton-branding">
+            <div className="sk-line title"></div>
+            <div className="sk-line sub"></div>
+            <div className="sk-line sub"></div>
+          </div>
+          <div className="skeleton-meta">
+            <div className="sk-line title"></div>
+            <div className="sk-line item"></div>
+            <div className="sk-line item"></div>
+          </div>
+        </div>
+        <div className="skeleton-billing">
+          <div className="sk-line label"></div>
+          <div className="sk-line name"></div>
+          <div className="sk-line addr"></div>
+          <div className="sk-line addr"></div>
+        </div>
+        <div className="skeleton-table">
+          <div className="sk-row header"></div>
+          <div className="sk-row"></div>
+          <div className="sk-row"></div>
+          <div className="sk-row"></div>
+        </div>
+        <div className="skeleton-footer">
+          <div className="sk-footer-col">
+            <div className="sk-line label"></div>
+            <div className="sk-line block"></div>
+          </div>
+          <div className="sk-footer-col right">
+            <div className="sk-line total"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
   if (!invoice) return <div className="error">Invoice not found.</div>;
 
   const subtotal = invoice.subtotal || 0;
@@ -617,6 +655,43 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
  
         .loading, .error { height: 100vh; display: flex; align-items: center; justify-content: center; font-weight: 600; }
         .error { color: #ff3b30; }
+
+        /* Skeleton Animation */
+        @keyframes shimmer {
+          0% { background-position: -468px 0; }
+          100% { background-position: 468px 0; }
+        }
+
+        .sk-line, .sk-row {
+          background: #f6f7f8;
+          background-image: linear-gradient(to right, #f6f7f8 0%, #edeef1 20%, #f6f7f8 40%, #f6f7f8 100%);
+          background-repeat: no-repeat;
+          background-size: 800px 104px;
+          animation: shimmer 1.5s infinite linear;
+          border-radius: 4px;
+        }
+
+        .skeleton-page { padding: 40px !important; }
+        .skeleton-header { display: flex; justify-content: space-between; margin-bottom: 60px; }
+        .skeleton-branding .title { width: 200px; height: 24px; margin-bottom: 12px; }
+        .skeleton-branding .sub { width: 140px; height: 12px; margin-bottom: 8px; }
+        .skeleton-meta { text-align: right; }
+        .skeleton-meta .title { width: 120px; height: 28px; margin-bottom: 12px; margin-left: auto; }
+        .skeleton-meta .item { width: 160px; height: 14px; margin-bottom: 8px; margin-left: auto; }
+        
+        .skeleton-billing { margin-bottom: 40px; }
+        .skeleton-billing .label { width: 60px; height: 10px; margin-bottom: 12px; }
+        .skeleton-billing .name { width: 180px; height: 20px; margin-bottom: 8px; }
+        .skeleton-billing .addr { width: 240px; height: 12px; margin-bottom: 6px; }
+
+        .skeleton-table { margin-bottom: 40px; }
+        .sk-row { height: 40px; margin-bottom: 8px; width: 100%; }
+        .sk-row.header { height: 32px; background: #eee; margin-bottom: 16px; }
+
+        .skeleton-footer { display: flex; justify-content: space-between; margin-top: auto; padding-top: 40px; }
+        .sk-footer-col .label { width: 100px; height: 10px; margin-bottom: 12px; }
+        .sk-footer-col .block { width: 200px; height: 80px; }
+        .sk-footer-col.right .total { width: 180px; height: 50px; }
 
         @media print {
           html, body { 
