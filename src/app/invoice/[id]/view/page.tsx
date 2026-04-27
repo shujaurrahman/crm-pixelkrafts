@@ -159,18 +159,6 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
       <Toaster position="top-center" richColors />
       
       <div className="action-bar no-print">
-        <button 
-          onClick={() => {
-            const clientSlug = invoice.clientName?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-            const finalUrl = `${window.location.origin}/invoice/${clientSlug}/view`;
-            
-            const text = `Hi, please find the ${invoice.isPaid ? 'payment receipt' : 'invoice'} for ₹${invoice.grandTotal?.toLocaleString('en-IN')} here: ${finalUrl}`;
-            window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
-          }}
-          className="btn-share"
-        >
-          Share on WhatsApp
-        </button>
         <button onClick={() => window.print()} className="btn-print">
           Download PDF / Print
         </button>
@@ -657,17 +645,15 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
         .error { color: #ff3b30; }
 
         /* Skeleton Animation */
-        @keyframes shimmer {
-          0% { background-position: -468px 0; }
-          100% { background-position: 468px 0; }
+        @keyframes pulse {
+          0% { opacity: 0.6; }
+          50% { opacity: 1; }
+          100% { opacity: 0.6; }
         }
 
         .sk-line, .sk-row {
-          background: #f6f7f8;
-          background-image: linear-gradient(to right, #f6f7f8 0%, #edeef1 20%, #f6f7f8 40%, #f6f7f8 100%);
-          background-repeat: no-repeat;
-          background-size: 800px 104px;
-          animation: shimmer 1.5s infinite linear;
+          background: #f1f1f4;
+          animation: pulse 1.5s ease-in-out infinite;
           border-radius: 4px;
         }
 
