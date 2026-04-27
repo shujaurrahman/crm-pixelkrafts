@@ -1241,7 +1241,7 @@ export default function Home() {
         body: JSON.stringify(invoiceData)
       });
       toast.success('Invoice generated successfully!');
-      window.open(`/invoice/${lead.id}/view`, '_blank');
+      window.open(`/invoice/${lead.id.replace('ENQ-', 'INV-')}/view`, '_blank');
     } catch (e) {
       toast.error('Failed to generate invoice');
     } finally {
@@ -1250,8 +1250,12 @@ export default function Home() {
   };
 
   const shareInvoiceOnWhatsApp = (leadId: string) => {
-    const portalUrl = `${window.location.origin}/invoice/${leadId}/view`;
-    const message = `Hello, please find the invoice for your order (${leadId}) here: ${portalUrl}`;
+    const lead = leads.find(l => l.id === leadId);
+    const clientName = lead?.clientName || '';
+    const clientSlug = clientName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    
+    const portalUrl = `${window.location.origin}/invoice/${clientSlug}/view`;
+    const message = `Hello ${clientName}, please find the invoice for your order here: ${portalUrl}`;
     const waUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(waUrl, '_blank');
   };
@@ -3410,7 +3414,7 @@ export default function Home() {
                       >
                         Edit Invoice
                       </button>
-                      <button className="btn" onClick={() => window.open(`/invoice/${l.id}/view`, '_blank')}>
+                      <button className="btn" onClick={() => window.open(`/invoice/${l.id.replace('ENQ-', 'INV-')}/view`, '_blank')}>
                         View Portal
                       </button>
                       <button className="btn" onClick={() => shareInvoiceOnWhatsApp(l.id)} style={{ background: '#22c55e', color: 'white', borderColor: '#22c55e' }}>

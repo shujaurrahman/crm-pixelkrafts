@@ -8,21 +8,42 @@ import { numberToWords } from '@/lib/number-to-words';
 export default function InvoicePortal({ params: rawParams }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(rawParams);
   const fallbackParams = useParams();
-  const id = resolvedParams?.id || (fallbackParams?.id as string) || '';
+  const rawId = resolvedParams?.id || (fallbackParams?.id as string) || '';
   const [invoice, setInvoice] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-
-  // Defaults
-  const defaultCompanyName = 'Pixelkraft Software Solutions';
-  const defaultCompanyAddress = '805 Wasil Pilibhit 262001 UP India';
-  const defaultCompanyEmail = 'official@pixelkrafts.in';
-  const defaultCompanyPhone = '+917579966178';
-  const defaultMsmeNumber = 'UDYAM-UP-60-0038284';
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch(`/api/leads/${id}/invoice?t=${Date.now()}`, { cache: 'no-store' });
+        let targetId = '';
+
+        // Case 1: Standard ID (ENQ- or INV-)
+        if (rawId.startsWith('ENQ-') || rawId.startsWith('INV-')) {
+          const baseId = rawId.split('-').slice(0, 2).join('-');
+          targetId = baseId.startsWith('INV-') ? baseId.replace('INV-', 'ENQ-') : baseId;
+        } 
+        // Case 2: Client Name Slug (e.g., shuja-rahman)
+        else {
+          const leadsRes = await fetch('/api/leads', { cache: 'no-store' });
+          const leadsData = await leadsRes.json();
+          const leads = leadsData.leads || [];
+          
+          const found = leads.find((l: any) => {
+            const slug = l.clientName?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+            return slug === rawId;
+          });
+          
+          if (found) {
+            targetId = found.id;
+          }
+        }
+
+        if (!targetId) {
+          setLoading(false);
+          return;
+        }
+
+        const res = await fetch(`/api/leads/${targetId}/invoice?t=${Date.now()}`, { cache: 'no-store' });
         const data = await res.json();
 
         if (!data.error) {
@@ -84,9 +105,27 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
 
   return (
     <div className="invoice-container theme-adaptive">
+      <head>
+        <title>{invoice.isPaid ? 'Receipt' : 'Payment Request'} - {invoice.invoiceNo}</title>
+        <meta name="description" content={`Invoice from ${companyName} for ${invoice.grandTotal}`} />
+        <meta property="og:title" content={`${invoice.isPaid ? 'Payment Receipt' : 'Invoice Payment Request'} - ${invoice.invoiceNo}`} />
+        <meta property="og:description" content={`Amount: ₹${invoice.grandTotal?.toLocaleString('en-IN')} | ${companyName}`} />
+      </head>
       <Toaster position="top-center" richColors />
       
       <div className="action-bar no-print">
+        <button 
+          onClick={() => {
+            const clientSlug = invoice.clientName?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+            const finalUrl = `${window.location.origin}/invoice/${clientSlug}/view`;
+            
+            const text = `Hi, please find the ${invoice.isPaid ? 'payment receipt' : 'invoice'} for ₹${invoice.grandTotal?.toLocaleString('en-IN')} here: ${finalUrl}`;
+            window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+          }}
+          className="btn-share"
+        >
+          Share on WhatsApp
+        </button>
         <button onClick={() => window.print()} className="btn-print">
           Download PDF / Print
         </button>
@@ -174,6 +213,12 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
           </table>
         </div>
 
+        {!invoice.isPaid && (
+          <div className="payment-instruction">
+            <p>Please process the payment to the bank account or scan the QR code below.</p>
+          </div>
+        )}
+
         <footer className="invoice-footer">
           <div className="notes-col">
             <div className="amount-words">
@@ -199,7 +244,7 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
                     <p className="upi-id">7579966178@hdfc</p>
                   </div>
                   <div className="upi-scanner-wrap">
-                    <img src="/UPI.jpeg" alt="UPI Scanner" className="upi-img" />
+                    <img src="/upi-qr.jpg" alt="UPI Scanner" className="upi-img" />
                   </div>
                 </div>
               )}
@@ -308,7 +353,18 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
           transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
           box-shadow: 0 4px 12px rgba(0, 122, 255, 0.2);
         }
-        .btn-print:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0, 122, 255, 0.3); }
+        .btn-share { 
+          background: #25d366; 
+          color: white; 
+          border: none; 
+          padding: 12px 28px; 
+          border-radius: 10px; 
+          font-weight: 600; 
+          cursor: pointer; 
+          transition: all 0.2s;
+          box-shadow: 0 4px 12px rgba(37, 211, 102, 0.2);
+        }
+        .btn-print:hover, .btn-share:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.1); }
         
         .a4-page { 
           width: 210mm; 
@@ -460,6 +516,18 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
           line-height: 1.3;
           color: #1c1c1e !important;
           font-weight: 500;
+        }
+
+        .payment-instruction { 
+          background: #fff9e6; 
+          border: 1px solid #ffeeba; 
+          padding: 12px; 
+          border-radius: 8px; 
+          margin-bottom: 24px; 
+          text-align: center; 
+          font-size: 13px; 
+          color: #856404 !important; 
+          font-weight: 600;
         }
 
         .invoice-table { width: 100%; border-collapse: separate; border-spacing: 0; }
