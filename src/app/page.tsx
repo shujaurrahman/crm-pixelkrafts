@@ -1311,62 +1311,61 @@ export default function Home() {
       toast.error('Either Phone or Email is required.');
       return;
     }
-    const nextLeads = leads.map((lead) => {
-      if (lead.id !== editingLeadId) return lead;
-
-      const existingItems = Array.isArray(lead.enquiryItems) && lead.enquiryItems.length
-        ? lead.enquiryItems
-        : [{ brand: lead.brand, productCategory: lead.productCategory, productName: lead.productName }];
-      const draftItems = Array.isArray(leadEditDraft.enquiryItems)
-        ? leadEditDraft.enquiryItems.map(normalizeLineItem).filter((item) => item.productName)
-        : [];
-      const firstUpdated = normalizeLineItem({
-        brand: leadEditDraft.brand,
-        productCategory: leadEditDraft.productCategory || existingItems[0]?.productCategory || '',
-        productName: leadEditDraft.productName,
-      });
-      const nextItems = draftItems.length
-        ? draftItems
-        : firstUpdated.productName
-          ? [firstUpdated, ...existingItems.slice(1)]
-          : existingItems;
-      const primary = nextItems[0] || firstUpdated;
-
-      return {
-        ...lead,
-        date: leadEditDraft.date,
-        clientName: leadEditDraft.clientName.trim(),
-        email: leadEditDraft.email.trim(),
-        phone: leadEditDraft.phone.trim(),
-        country: leadEditDraft.country.trim(),
-        state: leadEditDraft.state.trim(),
-        city: leadEditDraft.city.trim(),
-        clientType: leadEditDraft.clientType,
-        brand: primary.brand,
-        productCategory: primary.productCategory,
-        productName: primary.productName,
-        enquiryItems: nextItems,
-        owner: leadEditDraft.owner,
-        status: leadEditDraft.status,
-        priority: leadEditDraft.priority,
-        expectedValue: Number(leadEditDraft.expectedValue || 0),
-        quantity: Number.isFinite(Number(leadEditDraft.quantity)) ? Number(leadEditDraft.quantity) : undefined,
-        poNumber: leadEditDraft.poNumber.trim(),
-        closurePercent: Number.isFinite(Number(leadEditDraft.closurePercent))
-          ? Math.max(0, Math.min(100, Number(leadEditDraft.closurePercent)))
-          : undefined,
-        advanceValue: Number(leadEditDraft.advanceValue || 0),
-        orderExpectedDate: leadEditDraft.orderExpectedDate,
-        orderExecutionBy: leadEditDraft.orderExecutionBy.trim(),
-        deliveryTarget: leadEditDraft.deliveryTarget.trim(),
-        notes: leadEditDraft.notes.trim(),
-        images: leadEditDraft.images,
-        quoteUrl: leadEditDraft.quoteUrl || undefined,
-      };
-    });
 
     setLeads((prev) => {
-      const next = prev.map(l => l.id === editingLeadId ? updatedLead : l);
+      const next = prev.map((lead) => {
+        if (lead.id !== editingLeadId) return lead;
+
+        const existingItems = Array.isArray(lead.enquiryItems) && lead.enquiryItems.length
+          ? lead.enquiryItems
+          : [{ brand: lead.brand, productCategory: lead.productCategory, productName: lead.productName }];
+        const draftItems = Array.isArray(leadEditDraft.enquiryItems)
+          ? leadEditDraft.enquiryItems.map(normalizeLineItem).filter((item) => item.productName)
+          : [];
+        const firstUpdated = normalizeLineItem({
+          brand: leadEditDraft.brand,
+          productCategory: leadEditDraft.productCategory || existingItems[0]?.productCategory || '',
+          productName: leadEditDraft.productName,
+        });
+        const nextItems = draftItems.length
+          ? draftItems
+          : firstUpdated.productName
+            ? [firstUpdated, ...existingItems.slice(1)]
+            : existingItems;
+        const primary = nextItems[0] || firstUpdated;
+
+        return {
+          ...lead,
+          date: leadEditDraft.date,
+          clientName: leadEditDraft.clientName.trim(),
+          email: leadEditDraft.email.trim(),
+          phone: leadEditDraft.phone.trim(),
+          country: leadEditDraft.country.trim(),
+          state: leadEditDraft.state.trim(),
+          city: leadEditDraft.city.trim(),
+          clientType: leadEditDraft.clientType,
+          brand: primary.brand,
+          productCategory: primary.productCategory,
+          productName: primary.productName,
+          enquiryItems: nextItems,
+          owner: leadEditDraft.owner,
+          status: leadEditDraft.status,
+          priority: leadEditDraft.priority,
+          expectedValue: Number(leadEditDraft.expectedValue || 0),
+          quantity: Number.isFinite(Number(leadEditDraft.quantity)) ? Number(leadEditDraft.quantity) : undefined,
+          poNumber: leadEditDraft.poNumber.trim(),
+          closurePercent: Number.isFinite(Number(leadEditDraft.closurePercent))
+            ? Math.max(0, Math.min(100, Number(leadEditDraft.closurePercent)))
+            : undefined,
+          advanceValue: Number(leadEditDraft.advanceValue || 0),
+          orderExpectedDate: leadEditDraft.orderExpectedDate,
+          orderExecutionBy: leadEditDraft.orderExecutionBy.trim(),
+          deliveryTarget: leadEditDraft.deliveryTarget.trim(),
+          notes: leadEditDraft.notes.trim(),
+          images: leadEditDraft.images,
+          quoteUrl: leadEditDraft.quoteUrl || undefined,
+        };
+      });
       void syncLeads(next);
       return next;
     });
