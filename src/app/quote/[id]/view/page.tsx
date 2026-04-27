@@ -257,67 +257,69 @@ export default function ClientQuotePortal({ params: rawParams }: { params: Promi
                 </>
               )}
 
-              <table className="pixel-table">
-                <thead>
-                  <tr>
-                    <th style={{ width: '50px', textAlign: 'center' }}>SR</th>
-                    <th style={{ textAlign: 'left' }}>DESCRIPTION</th>
-                    <th style={{ width: '60px', textAlign: 'center' }}>UOM</th>
-                    <th style={{ width: '60px', textAlign: 'center' }}>QTY</th>
-                    <th style={{ width: '100px', textAlign: 'right' }}>RATE</th>
-                    <th style={{ width: '120px', textAlign: 'right' }}>TOTAL (₹)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {chunk.map((item: any, i: number) => {
-                    const itemIdx = pageIdx === 0 ? i : (3 + (pageIdx-1)*7 + i);
-                    return (
-                      <tr key={i}>
-                        <td style={{ textAlign: 'center' }}>{itemIdx + 1}</td>
-                        <td className="desc-cell">{item.desc}</td>
-                        <td style={{ textAlign: 'center' }}>{item.uom}</td>
-                        <td style={{ textAlign: 'center' }}>{item.qty}</td>
-                        <td style={{ textAlign: 'right' }}>₹{item.rate.toLocaleString('en-IN')}</td>
-                        <td style={{ textAlign: 'right' }}>₹{(item.qty * item.rate).toLocaleString('en-IN')}</td>
-                      </tr>
-                    );
-                  })}
-                  {pageIdx === paginatedProductChunks.length - 1 && (() => {
-                    const subtotal = Number(quote.items.reduce((acc: number, item: any) => acc + (Number(item.qty) * Number(item.rate)), 0));
-                    const discountRate = Number(quote.discountRate || 0);
-                    const discountAmount = (subtotal * discountRate) / 100;
-                    const afterDiscount = subtotal - discountAmount;
-                    const gstRate = Number(quote.gstRate || 0);
-                    const gstAmount = (afterDiscount * gstRate) / 100;
-                    const grandTotal = afterDiscount + gstAmount;
-                    
-                    return (
-                      <>
-                        <tr className="summary-row-start">
-                          <td></td><td></td><td></td><td></td>
-                          <td className="total-label">SUB TOTAL</td>
-                          <td className="total-val">₹{subtotal.toLocaleString('en-IN')}</td>
+              <div className="table-responsive">
+                <table className="pixel-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: '50px', textAlign: 'center' }}>SR</th>
+                      <th style={{ textAlign: 'left' }}>DESCRIPTION</th>
+                      <th style={{ width: '60px', textAlign: 'center' }}>UOM</th>
+                      <th style={{ width: '60px', textAlign: 'center' }}>QTY</th>
+                      <th style={{ width: '100px', textAlign: 'right' }}>RATE</th>
+                      <th style={{ width: '120px', textAlign: 'right' }}>TOTAL (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {chunk.map((item: any, i: number) => {
+                      const itemIdx = pageIdx === 0 ? i : (3 + (pageIdx-1)*7 + i);
+                      return (
+                        <tr key={i}>
+                          <td style={{ textAlign: 'center' }}>{itemIdx + 1}</td>
+                          <td className="desc-cell">{item.desc}</td>
+                          <td style={{ textAlign: 'center' }}>{item.uom}</td>
+                          <td style={{ textAlign: 'center' }}>{item.qty}</td>
+                          <td style={{ textAlign: 'right' }}>₹{item.rate.toLocaleString('en-IN')}</td>
+                          <td style={{ textAlign: 'right' }}>₹{(item.qty * item.rate).toLocaleString('en-IN')}</td>
                         </tr>
-                        <tr>
-                          <td></td><td></td><td></td><td></td>
-                          <td className="total-label">DISCOUNT ({discountRate}%)</td>
-                          <td className="total-val">- ₹{Math.round(discountAmount).toLocaleString('en-IN')}</td>
-                        </tr>
-                        <tr>
-                          <td></td><td></td><td></td><td></td>
-                          <td className="total-label">GST @ {gstRate}%</td>
-                          <td className="total-val">+ ₹{Math.round(gstAmount).toLocaleString('en-IN')}</td>
-                        </tr>
-                        <tr className="grand-total-row">
-                          <td></td><td></td><td></td><td></td>
-                          <td className="total-label">GRAND TOTAL</td>
-                          <td className="total-val">₹{Math.round(grandTotal).toLocaleString('en-IN')}</td>
-                        </tr>
-                      </>
-                    );
-                  })()}
-                </tbody>
-              </table>
+                      );
+                    })}
+                    {pageIdx === paginatedProductChunks.length - 1 && (() => {
+                      const subtotal = Number(quote.items.reduce((acc: number, item: any) => acc + (Number(item.qty) * Number(item.rate)), 0));
+                      const discountRate = Number(quote.discountRate || 0);
+                      const discountAmount = (subtotal * discountRate) / 100;
+                      const afterDiscount = subtotal - discountAmount;
+                      const gstRate = Number(quote.gstRate || 0);
+                      const gstAmount = (afterDiscount * gstRate) / 100;
+                      const grandTotal = afterDiscount + gstAmount;
+                      
+                      return (
+                        <>
+                          <tr className="summary-row-start">
+                            <td></td><td></td><td></td><td></td>
+                            <td className="total-label">SUB TOTAL</td>
+                            <td className="total-val">₹{subtotal.toLocaleString('en-IN')}</td>
+                          </tr>
+                          <tr>
+                            <td></td><td></td><td></td><td></td>
+                            <td className="total-label">DISCOUNT ({discountRate}%)</td>
+                            <td className="total-val">- ₹{Math.round(discountAmount).toLocaleString('en-IN')}</td>
+                          </tr>
+                          <tr>
+                            <td></td><td></td><td></td><td></td>
+                            <td className="total-label">GST @ {gstRate}%</td>
+                            <td className="total-val">+ ₹{Math.round(gstAmount).toLocaleString('en-IN')}</td>
+                          </tr>
+                          <tr className="grand-total-row">
+                            <td></td><td></td><td></td><td></td>
+                            <td className="total-label">GRAND TOTAL</td>
+                            <td className="total-val">₹{Math.round(grandTotal).toLocaleString('en-IN')}</td>
+                          </tr>
+                        </>
+                      );
+                    })()}
+                  </tbody>
+                </table>
+              </div>
 
           {pageIdx === paginatedProductChunks.length - 1 && (() => {
             const subtotal = Number(quote.items.reduce((acc: number, item: any) => acc + (Number(item.qty) * Number(item.rate)), 0));
@@ -462,6 +464,41 @@ export default function ClientQuotePortal({ params: rawParams }: { params: Promi
         .grand-total-row td { background: #0f172a !important; color: white !important; border-color: #000 !important; }
         .grand-total-row .total-val { font-size: 15px; }
 
+        .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1.5px solid #000; margin-bottom: 24px; }
+        .table-responsive .pixel-table { border: none; margin-bottom: 0; }
+
+        @media (max-width: 850px) {
+          .bar-inner { flex-direction: row; justify-content: space-between; gap: 10px; padding: 10px; }
+          .status-badge { padding: 4px 8px; font-size: 9px; }
+          .sign-group { gap: 4px; }
+          .sig-input { width: 120px; font-size: 10px; padding: 6px; }
+          .btn-accept { padding: 6px 12px; font-size: 10px; }
+          
+          .document-canvas { padding: 0; gap: 8px; }
+          .a4-page { width: 100%; height: auto; border-radius: 0; box-shadow: none; }
+          .page-content { padding: 25mm 10px 25mm 10px; }
+          
+          .header-meta-grid { grid-template-columns: 1.2fr 1fr; gap: 10px; margin-bottom: 16px; }
+          .metadata-box { padding: 8px; min-height: auto !important; }
+          .to-label { font-size: 9px; margin-bottom: 4px; }
+          .address-val { font-size: 10px; }
+          .m-line { font-size: 9px; line-height: 1.6; }
+          .m-label { width: 70px; }
+          
+          .signature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding-top: 20px; padding-bottom: 20px; }
+          .sig-label { font-size: 11px; margin-bottom: 20px; }
+          .sig-comp { font-size: 11px; }
+          .sig-stamp { font-size: 9px; }
+          .sig-name { font-size: 16px; min-width: 100px; }
+          .sig-meta { font-size: 7px; }
+          
+          .doc-type-title { font-size: 18px; letter-spacing: 2px; margin-bottom: 20px; }
+          .logo-level-date { top: 12mm; right: 10px; font-size: 9px; }
+          .subject-box-clean { font-size: 12px; padding: 10px 0; margin-bottom: 20px; }
+          .pixel-table th { padding: 8px 5px; font-size: 8px; }
+          .pixel-table td { padding: 6px 5px; font-size: 9px; }
+        }
+
         .after-table-info { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
         .words-block { display: flex; gap: 6px; align-items: baseline; padding: 0; background: none; border: none; }
         .words-title { font-size: 9px; font-weight: 800; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px; }
@@ -474,31 +511,29 @@ export default function ClientQuotePortal({ params: rawParams }: { params: Promi
         .section-title { font-size: 14px; font-weight: 900; color: #0f172a !important; margin: 40px 0 16px 0; letter-spacing: 1px; border-bottom: 2px solid #0f172a; display: inline-block; padding-bottom: 4px; text-align: left; text-transform: uppercase; }
         .section-list { padding-left: 20px; margin: 0; text-align: left; }
         .section-list li { font-size: 13px; margin-bottom: 10px; color: #000 !important; line-height: 1.5; font-weight: 600; }
-  
+   
         .signature-grid { margin-top: auto; display: grid; grid-template-columns: 1fr 1fr; border-top: 2px solid #000; padding-top: 40px; }
         .sig-label { font-weight: 900; font-size: 14px; margin-bottom: 40px; color: #000 !important; text-transform: uppercase; text-align: left; }
         .sig-comp { font-size: 14px; font-weight: 800; color: #000 !important; text-align: left; }
         .sig-stamp { font-size: 11px; color: #64748b; font-style: italic; margin-top: 4px; text-align: left; }
-  
+   
         .client-sign-box { text-align: right; }
         .client-sign-box .sig-label, .client-sign-box .sig-comp, .client-sign-box .sig-stamp { text-align: right; }
         
         .digital-sig-block { text-align: right; min-width: 180px; display: inline-flex; flex-direction: column; align-items: flex-end; }
         .sig-name { font-family: 'Dancing Script', cursive; font-size: 20px; color: #000 !important; font-weight: 600; border-bottom: 1px solid #000; padding: 0 8px 2px 8px; min-width: 140px; text-align: center; }
         .sig-meta { font-size: 8px; color: #64748b; margin-top: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-
+ 
         .error { height: 100vh; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #ef4444; }
-
+ 
         @media print {
           .no-print { display: none !important; }
           body { background: white; }
           .document-canvas { padding: 0; gap: 0; }
-          .a4-page { box-shadow: none; margin: 0; page-break-after: always; -webkit-print-color-adjust: exact; border-radius: 0; }
+          .a4-page { box-shadow: none; margin: 0; page-break-after: always; -webkit-print-color-adjust: exact; border-radius: 0; width: 210mm; height: 297mm; }
           @page { size: A4; margin: 0; }
         }
       `}</style>
     </div>
   );
 }
-
-

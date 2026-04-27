@@ -36,6 +36,8 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
   const [gstRate, setGstRate] = useState(18);
   const [bankDetails, setBankDetails] = useState('A/C: 50100656771132\nIFSC: HDFC0000651\nBranch: NOIDA SEC 26\nAccount Type: SAVINGS');
   const [notes, setNotes] = useState('');
+  const [isPaid, setIsPaid] = useState(false);
+  const [paidAt, setPaidAt] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -64,6 +66,8 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
           if (invData.companyEmail) setCompanyEmail(invData.companyEmail);
           if (invData.companyPhone) setCompanyPhone(invData.companyPhone);
           if (invData.msmeNumber) setMsmeNumber(invData.msmeNumber);
+          if (invData.isPaid) setIsPaid(true);
+          if (invData.paidAt) setPaidAt(invData.paidAt);
         } else if (found) {
           setLead(found);
           setClientName(found.clientName);
@@ -136,6 +140,8 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
       companyEmail,
       companyPhone,
       msmeNumber,
+      isPaid,
+      paidAt,
     };
 
     try {
@@ -156,6 +162,61 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
     }
   };
 
+  const markAsPaid = async () => {
+    if (!window.confirm('Mark this invoice as Paid? This will be visible to the client.')) return;
+    setIsSaving(true);
+    const indianTime = new Date().toLocaleString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+
+    const invoiceData = {
+      invoiceNo,
+      date: invoiceDate,
+      lastSaved: new Date().toISOString(),
+      clientName,
+      address: toAddress,
+      subject,
+      items,
+      subtotal,
+      discount: discountRate,
+      tax: gstRate,
+      bankDetails,
+      total: Math.round(grandTotal),
+      companyName,
+      companyAddress,
+      companyEmail,
+      companyPhone,
+      msmeNumber,
+      isPaid: true,
+      paidAt: indianTime
+    };
+
+    try {
+      const res = await fetch(`/api/leads/${id}/invoice`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(invoiceData)
+      });
+      if (res.ok) {
+        setIsPaid(true);
+        setPaidAt(indianTime);
+        toast.success('Invoice marked as Paid!');
+      } else {
+        throw new Error('Failed to save');
+      }
+    } catch (e) {
+      toast.error('Error marking as paid');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   if (isLoading) return <div className="loading">Loading Editor...</div>;
 
   return (
@@ -171,6 +232,13 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
           <button className="btn-save" onClick={saveInvoice} disabled={isSaving}>
             {isSaving ? 'Saving...' : 'Save Invoice'}
           </button>
+          {!isPaid ? (
+            <button className="btn-paid" onClick={markAsPaid} disabled={isSaving}>
+              Mark Paid
+            </button>
+          ) : (
+            <span className="paid-badge-toolbar">PAID</span>
+          )}
           <button className="btn-view" onClick={() => window.open(`/invoice/${id}/view`, '_blank')}>
             View Portal
           </button>
@@ -310,21 +378,30 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
               <p className="val">{numberToWords(Math.round(grandTotal))}</p>
             </div>
             <div className="bank-details">
-              <h4 className="label">Bank Details:</h4>
+              <h4 className="label">
+                {isPaid ? 'Payment Processed to:' : 'Bank Details:'}
+              </h4>
+              {isPaid && (
+                <p style={{ fontSize: '10px', color: '#34c759', fontWeight: 600, marginBottom: '8px', fontStyle: 'italic' }}>
+                  ✓ Payment was successfully processed on {paidAt} to the account below
+                </p>
+              )}
               <textarea 
                 value={bankDetails} 
                 onChange={e => setBankDetails(e.target.value)}
                 rows={4}
               />
-              <div className="upi-section">
-                <div className="upi-meta">
-                  <h4 className="label">Scan to Pay via UPI:</h4>
-                  <p className="upi-id">7579966178@hdfc</p>
+              {!isPaid && (
+                <div className="upi-section">
+                  <div className="upi-meta">
+                    <h4 className="label">Scan to Pay via UPI:</h4>
+                    <p className="upi-id">7579966178@hdfc</p>
+                  </div>
+                  <div className="upi-scanner-wrap">
+                    <img src="/UPI.jpeg" alt="UPI Scanner" className="upi-img" />
+                  </div>
                 </div>
-                <div className="upi-scanner-wrap">
-                  <img src="/UPI.jpeg" alt="UPI Scanner" className="upi-img" />
-                </div>
-              </div>
+              )}
             </div>
           </div>
           <div className="totals-col">
@@ -428,6 +505,29 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
         }
         .btn-save:hover { opacity: 0.9; transform: translateY(-1px); }
         .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .btn-paid {
+          background: #34c759;
+          color: white;
+          border: none;
+          padding: 8px 20px;
+          border-radius: 8px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+          font-size: 13px;
+        }
+        .btn-paid:hover { opacity: 0.9; transform: translateY(-1px); }
+        
+        .paid-badge-toolbar {
+          background: rgba(52, 199, 89, 0.1);
+          color: #34c759;
+          padding: 6px 16px;
+          border-radius: 8px;
+          font-weight: 700;
+          font-size: 12px;
+          border: 1px solid #34c759;
+        }
 
         .invoice-page { 
           width: 210mm; 
@@ -687,6 +787,54 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
  
         .loading { height: 100vh; display: flex; align-items: center; justify-content: center; font-weight: 600; }
  
+        @media (max-width: 850px) {
+          .editor-container { padding: 10px 0; }
+          .toolbar { width: 95%; padding: 10px; flex-wrap: wrap; justify-content: center; gap: 10px; }
+          .btn-save { width: 100%; justify-content: center; }
+          
+          .invoice-page { 
+            width: 100%; 
+            min-height: auto; 
+            padding: 10px; 
+            border-radius: 0; 
+            box-shadow: none;
+          }
+          .inv-header { display: flex; flex-direction: row; justify-content: space-between; gap: 8px; margin-bottom: 15px; }
+          .branding { flex: 1.5; }
+          .branding h1 { font-size: 14px; }
+          .company-details { font-size: 10px; }
+          
+          .invoice-meta { flex: 1; text-align: right; }
+          .doc-title { font-size: 18px; margin-bottom: 2px; }
+          .meta-grid { align-items: flex-end; }
+          .meta-item { font-size: 10px; gap: 4px; }
+          
+          .inv-billing { flex-direction: row; justify-content: space-between; gap: 10px; margin-bottom: 20px; }
+          .bill-box { padding: 10px; flex: 1; }
+          
+          .invoice-footer { display: flex; flex-direction: row; justify-content: space-between; gap: 5px; padding-top: 10px; }
+          .notes-col { flex: 1; }
+          .totals-col { flex: 1.4; border-top: none; padding-top: 0; display: flex; flex-direction: column; align-items: flex-end; }
+          .total-row { font-size: 9px; padding: 2px 0; width: 100%; display: flex; justify-content: space-between; white-space: nowrap; gap: 4px; }
+          .grand-total { 
+            border-top: 1.5px solid #f1f1f4; 
+            margin-top: 5px; 
+            padding-top: 8px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: flex-end; 
+            gap: 0;
+            width: 100%;
+          }
+          .grand-total .label { font-size: 9px; font-weight: 700; color: #8e8e93 !important; text-transform: uppercase; }
+          .grand-total .val { font-size: 14px; font-weight: 900; color: #007aff !important; line-height: 1.2; }
+          
+          .signature-area { margin-top: 30px; }
+          .auth-sign { width: 140px; }
+          .signature-italic { font-size: 18px; }
+          .sign-line { height: 40px; }
+        }
+
         @media print {
           html, body { height: auto !important; margin: 0 !important; padding: 0 !important; background: white !important; }
           .no-print { display: none !important; }

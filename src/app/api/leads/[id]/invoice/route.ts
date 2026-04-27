@@ -25,6 +25,8 @@ export async function POST(
           ...l,
           lastInvoiceDate: new Date().toISOString(),
           invoiceNo: invoiceData.invoiceNo || l.id.replace('ENQ-', 'INV-'),
+          isPaid: invoiceData.isPaid || false,
+          paidAt: invoiceData.paidAt || '',
         };
       }
       return l;

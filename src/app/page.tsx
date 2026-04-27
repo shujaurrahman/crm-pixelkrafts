@@ -444,8 +444,8 @@ export default function Home() {
     void loadData(true);
 
     const handleFocus = () => {
-      // Throttled focus reload
-      if (Date.now() - lastSyncTime.current > 5000) {
+      // Throttled focus reload - increased to 15s for better performance
+      if (Date.now() - lastSyncTime.current > 15000) {
         void loadData(false);
       }
     };
@@ -1150,11 +1150,12 @@ export default function Home() {
       });
 
       const savedLead = payload.lead || newLead;
-      const finalLeads = [savedLead, ...leads.filter((lead) => lead.id !== savedLead.id)];
-      setLeads(finalLeads);
+      setLeads((prev) => [savedLead, ...prev.filter((l) => l.id !== savedLead.id)]);
       
       if (typeof window !== 'undefined') {
-        localStorage.setItem(LEADS_CACHE_KEY, JSON.stringify(finalLeads));
+        const currentLeads = JSON.parse(localStorage.getItem(LEADS_CACHE_KEY) || '[]');
+        const updatedLeads = [savedLead, ...currentLeads.filter((l: any) => l.id !== savedLead.id)];
+        localStorage.setItem(LEADS_CACHE_KEY, JSON.stringify(updatedLeads));
       }
     } catch (error) {
       // Rollback on error
@@ -1166,31 +1167,35 @@ export default function Home() {
   };
 
   const cycleStatus = (id: string) => {
-    const nextLeads = leads.map((lead) => {
-      if (lead.id !== id) return lead;
-      const i = STATUSES.indexOf(lead.status);
-      const nextStatus = STATUSES[(i + 1) % STATUSES.length];
-      const historyEntry = {
-        date: new Date().toISOString(),
-        action: 'Status Change',
-        prev: lead.status,
-        next: nextStatus
-      };
-      return {
-        ...lead,
-        status: nextStatus,
-        history: [...(lead.history || []), historyEntry]
-      };
+    setLeads((prev) => {
+      const updated = prev.map((lead) => {
+        if (lead.id !== id) return lead;
+        const i = STATUSES.indexOf(lead.status);
+        const nextStatus = STATUSES[(i + 1) % STATUSES.length];
+        const historyEntry = {
+          date: new Date().toISOString(),
+          action: 'Status Change',
+          prev: lead.status,
+          next: nextStatus
+        };
+        return {
+          ...lead,
+          status: nextStatus,
+          history: [...(lead.history || []), historyEntry]
+        };
+      });
+      void syncLeads(updated);
+      return updated;
     });
-    setLeads(nextLeads);
-    void syncLeads(nextLeads);
     toast.success('Status updated');
   };
 
   const deleteLead = (id: string) => {
-    const nextLeads = leads.filter((lead) => lead.id !== id);
-    setLeads(nextLeads);
-    void syncLeads(nextLeads);
+    setLeads((prev) => {
+      const updated = prev.filter((lead) => lead.id !== id);
+      void syncLeads(updated);
+      return updated;
+    });
   };
 
   const copyQuoteShareLink = async (leadId: string) => {
@@ -1360,8 +1365,11 @@ export default function Home() {
       };
     });
 
-    setLeads(nextLeads);
-    void syncLeads(nextLeads);
+    setLeads((prev) => {
+      const next = prev.map(l => l.id === editingLeadId ? updatedLead : l);
+      void syncLeads(next);
+      return next;
+    });
     cancelLeadEdit();
   };
 
@@ -2063,7 +2071,19 @@ export default function Home() {
                           return (
                             <Fragment key={lead.id}>
                               <tr key={lead.id} className="enquiry-row" onClick={() => router.push(`/enquiry/${lead.id}`)} style={{ cursor: 'pointer' }}>
-                                <td>{lead.id}</td>
+                                <td style={{ position: 'relative', paddingLeft: (lead.acceptanceSignature || lead.isPaid) ? '28px' : '16px' }}>
+                                  {lead.acceptanceSignature && (
+                                    <div className="vertex-ribbon-container">
+                                      <div className="vertex-ribbon signed">Signed</div>
+                                    </div>
+                                  )}
+                                  {lead.isPaid && (
+                                    <div className="vertex-ribbon-container">
+                                      <div className="vertex-ribbon paid">Paid</div>
+                                    </div>
+                                  )}
+                                  {lead.id}
+                                </td>
                                 <td>{formatDate(lead.date)}</td>
                                 <td>
                                   <div className="client-main">{lead.clientName}</div>
@@ -2093,8 +2113,8 @@ export default function Home() {
                                 <td className="status-cell">
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                     <span className={`status status-pill ${statusClass(lead.status)}`}>{lead.status}</span>
-                                    {lead.acceptanceSignature && (
-                                      <span className="status-badge won" style={{ fontSize: '10px', padding: '2px 8px' }}>✓ Signed</span>
+                                    {lead.isPaid && (
+                                      <span className="status-badge won" style={{ fontSize: '10px', padding: '2px 8px', background: 'var(--blue-soft)', color: 'var(--blue)' }}>✓ Paid</span>
                                     )}
                                   </div>
                                 </td>
@@ -2330,9 +2350,11 @@ export default function Home() {
                             e.preventDefault();
                             const leadId = e.dataTransfer.getData('leadId');
                             if (leadId) {
-                              const updatedLeads = leads.map(l => l.id === leadId ? { ...l, status } : l);
-                              setLeads(updatedLeads);
-                              void syncLeads(updatedLeads);
+                              setLeads((prev) => {
+                                const next = prev.map(l => l.id === leadId ? { ...l, status } : l);
+                                void syncLeads(next);
+                                return next;
+                              });
                               toast.success(`Moved to ${status}`);
                             }
                           }}
@@ -2355,11 +2377,18 @@ export default function Home() {
                                 onDragStart={(e) => e.dataTransfer.setData('leadId', lead.id)}
                                 onClick={() => router.push(`/enquiry/${lead.id}`)}
                               >
-                                <div className="kanban-card-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                  {lead.clientName}
+                                <div className="kanban-card-title">
                                   {lead.acceptanceSignature && (
-                                    <span className="status-badge won" style={{ fontSize: '9px', padding: '1px 6px' }}>✓ Signed</span>
+                                    <div className="vertex-ribbon-container">
+                                      <div className="vertex-ribbon signed">Signed</div>
+                                    </div>
                                   )}
+                                  {lead.isPaid && (
+                                    <div className="vertex-ribbon-container">
+                                      <div className="vertex-ribbon paid">Paid</div>
+                                    </div>
+                                  )}
+                                  {lead.clientName}
                                 </div>
                                 <div className="kanban-card-meta">
                                   <span>{lead.brand}</span>

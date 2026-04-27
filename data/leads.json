@@ -34,7 +34,17 @@
     ],
     "lastQuoteDate": "2026-04-24T20:07:35.271Z",
     "advanceValue": 0,
-    "lastInvoiceDate": "2026-04-25T10:20:26.852Z",
-    "invoiceNo": "INV-0001"
+    "lastInvoiceDate": "2026-04-27T14:23:19.942Z",
+    "invoiceNo": "INV-0001",
+    "isPaid": true,
+    "paidAt": "27 Apr 2026, 07:53 pm",
+    "history": [
+      {
+        "date": "2026-04-27T14:22:47.226Z",
+        "action": "Status Change",
+        "prev": "Order Confirmed",
+        "next": "Closed Lost"
+      }
+    ]
   }
 ]

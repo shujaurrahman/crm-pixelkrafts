@@ -18,6 +18,13 @@ function getVercelBlobToken() {
   return process.env.BLOB_READ_WRITE_TOKEN?.trim() || process.env.VERCEL_BLOB_READ_WRITE_TOKEN?.trim() || '';
 }
 
+// In-memory cache for blob URLs to avoid expensive list() calls
+const blobUrlCache: Record<string, string> = {};
+
+// In-memory cache for JSON content to avoid expensive fetch() calls on warm instances
+const contentCache: Record<string, { data: any; timestamp: number }> = {};
+const CACHE_TTL = 30000; // 30 seconds
+
 function getContainerClient() {
   const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
   if (!connectionString) {
@@ -48,8 +55,16 @@ function ensurePersistentBackendConfigured() {
 export async function readJsonBlob<T>(blobName: string, fallback: T): Promise<T> {
   ensurePersistentBackendConfigured();
 
+  // Check in-memory content cache first
+  const cached = contentCache[blobName];
+  if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
+    return cached.data as T;
+  }
+
   if (hasVercelBlobToken()) {
-    return readJsonVercelBlob(blobName, fallback);
+    const data = await readJsonVercelBlob(blobName, fallback);
+    contentCache[blobName] = { data, timestamp: Date.now() };
+    return data;
   }
 
   if (!hasAzureConnection()) {
@@ -84,6 +99,9 @@ export async function readJsonBlob<T>(blobName: string, fallback: T): Promise<T>
 export async function writeJsonBlob<T>(blobName: string, payload: T): Promise<void> {
   ensurePersistentBackendConfigured();
 
+  // Update in-memory content cache immediately
+  contentCache[blobName] = { data: payload, timestamp: Date.now() };
+
   if (hasVercelBlobToken()) {
     await writeJsonVercelBlob(blobName, payload);
     return;
@@ -113,18 +131,40 @@ async function readJsonVercelBlob<T>(blobName: string, fallback: T): Promise<T> 
   if (!token) return fallback;
 
   try {
-    const result = await list({ prefix: blobName, limit: 100, token });
-    const blob = result.blobs.find((item) => item.pathname === blobName);
+    let blobUrl = blobUrlCache[blobName];
 
-    if (!blob) {
-      await writeJsonVercelBlob(blobName, fallback);
-      return fallback;
+    if (!blobUrl) {
+      const result = await list({ prefix: blobName, limit: 10, token });
+      const blob = result.blobs.find((item) => item.pathname === blobName);
+
+      if (!blob) {
+        await writeJsonVercelBlob(blobName, fallback);
+        return fallback;
+      }
+      blobUrl = blob.url;
+      blobUrlCache[blobName] = blobUrl;
     }
 
-    const response = await fetchBlobWithAuth(blob, token);
+    const response = await fetch(blobUrl, {
+      cache: 'no-store',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
     if (!response.ok) {
-      console.error(`Failed to read Vercel Blob ${blobName}: ${response.status} ${response.statusText}`);
-      return fallback;
+      // If direct fetch fails, clear cache and try list once
+      delete blobUrlCache[blobName];
+      const result = await list({ prefix: blobName, limit: 10, token });
+      const blob = result.blobs.find((item) => item.pathname === blobName);
+      if (!blob) return fallback;
+      
+      const retryRes = await fetch(blob.url, { cache: 'no-store', headers: { Authorization: `Bearer ${token}` } });
+      if (!retryRes.ok) return fallback;
+      
+      blobUrlCache[blobName] = blob.url;
+      const text = await retryRes.text();
+      return JSON.parse(text) as T;
     }
 
     const text = await response.text();
@@ -145,13 +185,16 @@ async function writeJsonVercelBlob<T>(blobName: string, payload: T): Promise<voi
   const token = getVercelBlobToken();
   if (!token) return;
 
-  await put(blobName, JSON.stringify(payload), {
+  const result = await put(blobName, JSON.stringify(payload), {
     access: 'private',
     addRandomSuffix: false,
     allowOverwrite: true,
     token,
     contentType: 'application/json',
   });
+  
+  // Update cache with the latest URL
+  blobUrlCache[blobName] = result.url;
 }
 
 interface BlobReadTarget {

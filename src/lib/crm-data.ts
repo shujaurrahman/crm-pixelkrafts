@@ -53,6 +53,8 @@ export interface Lead {
   acceptedAt?: string;
   lastInvoiceDate?: string;
   invoiceNo?: string;
+  isPaid?: boolean;
+  paidAt?: string;
 }
 
 export interface LeadDraft {

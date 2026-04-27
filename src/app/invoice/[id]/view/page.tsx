@@ -50,6 +50,8 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
               discount: 0,
               tax: 18,
               total: Math.round(lead.expectedValue * 1.18),
+              isPaid: lead.isPaid,
+              paidAt: lead.paidAt,
               lastSaved: new Date().toISOString()
             });
           }
@@ -88,7 +90,12 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
         <button onClick={() => window.print()} className="btn-print">Download / Print Invoice</button>
       </div>
 
-      <div className="invoice-box a4-page">
+      <div className="invoice-box a4-page" style={{ position: 'relative', overflow: 'hidden' }}>
+        {invoice.isPaid && (
+          <div className="vertex-ribbon-container">
+            <div className="vertex-ribbon paid">PAID</div>
+          </div>
+        )}
         <header className="invoice-header">
           <div className="branding">
             <h1 className="company-name">{companyName}</h1>
@@ -106,7 +113,7 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
             </div>
           </div>
           <div className="invoice-meta">
-            <h2 className="doc-title">Invoice</h2>
+            <h2 className="doc-title">{invoice.isPaid ? 'Paid Invoice' : 'Invoice'}</h2>
             <div className="meta-grid">
               <div className="meta-item">
                 <span className="label">Invoice No:</span>
@@ -116,6 +123,12 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
                 <span className="label">Date:</span>
                 <span className="val">{invoice.date}</span>
               </div>
+              {invoice.isPaid && (
+                <div className="meta-item">
+                  <span className="label">Paid On:</span>
+                  <span className="val" style={{ color: '#34c759' }}>{invoice.paidAt}</span>
+                </div>
+              )}
             </div>
           </div>
         </header>
@@ -135,28 +148,30 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
           </div>
         )}
 
-        <table className="invoice-table">
-          <thead>
-            <tr>
-              <th style={{ width: '40px' }}>SR</th>
-              <th>Description</th>
-              <th className="right" style={{ width: '60px' }}>Qty</th>
-              <th className="right" style={{ width: '120px' }}>Rate</th>
-              <th className="right" style={{ width: '120px' }}>Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            {invoice.items?.map((item: any, i: number) => (
-              <tr key={i}>
-                <td>{i + 1}</td>
-                <td style={{ whiteSpace: 'pre-wrap' }}>{item.desc}</td>
-                <td className="right">{item.qty}</td>
-                <td className="right">₹{item.rate.toLocaleString('en-IN')}</td>
-                <td className="right">₹{item.total.toLocaleString('en-IN')}</td>
+        <div className="table-responsive">
+          <table className="invoice-table">
+            <thead>
+              <tr>
+                <th style={{ width: '40px' }}>SR</th>
+                <th>Description</th>
+                <th className="right" style={{ width: '60px' }}>Qty</th>
+                <th className="right" style={{ width: '120px' }}>Rate</th>
+                <th className="right" style={{ width: '120px' }}>Amount</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {invoice.items?.map((item: any, i: number) => (
+                <tr key={i}>
+                  <td>{i + 1}</td>
+                  <td style={{ whiteSpace: 'pre-wrap' }}>{item.desc}</td>
+                  <td className="right">{item.qty}</td>
+                  <td className="right">₹{item.rate.toLocaleString('en-IN')}</td>
+                  <td className="right">₹{item.total.toLocaleString('en-IN')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
         <footer className="invoice-footer">
           <div className="notes-col">
@@ -165,19 +180,28 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
               <p className="val">{numberToWords(Math.round(grandTotal))}</p>
             </div>
             <div className="bank-details">
-              <h4 className="label">Bank Details:</h4>
+              <h4 className="label">
+                {invoice.isPaid ? 'Payment Processed to:' : 'Bank Details:'}
+              </h4>
+              {invoice.isPaid && (
+                <p style={{ fontSize: '11px', color: '#34c759', fontWeight: 600, marginBottom: '8px', fontStyle: 'italic' }}>
+                  ✓ Payment was successfully processed on {invoice.paidAt} to the account below
+                </p>
+              )}
               <div className="bank-content">
                 {invoice.bankDetails || 'A/C: 50100656771132\nIFSC: HDFC0000651\nBranch: NOIDA SEC 26\nAccount Type: SAVINGS'}
               </div>
-              <div className="upi-section">
-                <div className="upi-meta">
-                  <h4 className="label">Scan to Pay via UPI:</h4>
-                  <p className="upi-id">7579966178@hdfc</p>
+              {!invoice.isPaid && (
+                <div className="upi-section">
+                  <div className="upi-meta">
+                    <h4 className="label">Scan to Pay via UPI:</h4>
+                    <p className="upi-id">7579966178@hdfc</p>
+                  </div>
+                  <div className="upi-scanner-wrap">
+                    <img src="/UPI.jpeg" alt="UPI Scanner" className="upi-img" />
+                  </div>
                 </div>
-                <div className="upi-scanner-wrap">
-                  <img src="/UPI.jpeg" alt="UPI Scanner" className="upi-img" />
-                </div>
-              </div>
+              )}
             </div>
           </div>
           <div className="totals-col">
@@ -211,9 +235,40 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
           </div>
         </div>
       </div>
-
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Dancing+Script:wght@600&display=swap');
+
+        .vertex-ribbon-container {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 80px;
+          height: 80px;
+          overflow: hidden;
+          pointer-events: none;
+          z-index: 10;
+        }
+
+        .vertex-ribbon {
+          position: absolute;
+          top: 15px;
+          left: -25px;
+          width: 100px;
+          background: #34c759;
+          color: white;
+          font-size: 10px;
+          font-weight: 800;
+          text-align: center;
+          transform: rotate(-45deg);
+          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+          letter-spacing: 1px;
+          padding: 4px 0;
+          text-transform: uppercase;
+        }
+
+        .vertex-ribbon.paid {
+          background: #34c759;
+        }
 
         body { margin: 0; font-family: 'Inter', sans-serif; }
         .invoice-container { 
@@ -257,6 +312,53 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
           display: flex; 
           flex-direction: column;
           color: #1a1a1e !important;
+          transition: all 0.3s ease;
+        }
+
+        .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+        @media (max-width: 850px) {
+          .invoice-container { padding: 10px 0; }
+          .action-bar { width: 95%; justify-content: center; margin-bottom: 10px; }
+          .a4-page { 
+            width: 100%; 
+            min-height: auto; 
+            padding: 10px; 
+            border-radius: 0; 
+            box-shadow: none;
+          }
+          .invoice-header { display: flex; flex-direction: row; justify-content: space-between; gap: 8px; margin-bottom: 15px; }
+          .branding { flex: 1.5; }
+          .company-name { font-size: 14px; }
+          .company-details { font-size: 10px; }
+          
+          .invoice-meta { flex: 1; text-align: right; }
+          .doc-title { font-size: 18px; margin-bottom: 2px; }
+          .meta-grid { align-items: flex-end; }
+          .meta-item { font-size: 10px; gap: 4px; }
+          
+          .invoice-footer { display: flex; flex-direction: row; justify-content: space-between; gap: 5px; padding-top: 10px; }
+          .notes-col { flex: 1; }
+          .totals-col { flex: 1.4; border-top: none; padding-top: 0; display: flex; flex-direction: column; align-items: flex-end; }
+          .total-row { font-size: 9px; padding: 2px 0; width: 100%; display: flex; justify-content: space-between; white-space: nowrap; gap: 4px; }
+          .total-row .label { color: #8e8e93 !important; }
+          .grand-total { 
+            border-top: 1.5px solid #f1f1f4; 
+            margin-top: 5px; 
+            padding-top: 8px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: flex-end; 
+            gap: 0;
+            width: 100%;
+          }
+          .grand-total .label { font-size: 9px; font-weight: 700; color: #8e8e93 !important; text-transform: uppercase; }
+          .grand-total .val { font-size: 14px; font-weight: 900; color: #007aff !important; line-height: 1.2; }
+          
+          .signature-area { margin-top: 30px; }
+          .auth-sign { width: 140px; }
+          .signature-italic { font-size: 18px; }
+          .sign-line { height: 40px; }
         }
         .a4-page * { color: #1a1a1e !important; }
 
