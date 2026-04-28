@@ -18,7 +18,7 @@
     "expectedValue": 500000,
     "quantity": 1,
     "poNumber": "",
-    "closurePercent": 20,
+    "closurePercent": 100,
     "orderExpectedDate": "2026-06-01",
     "orderExecutionBy": "Dev Team",
     "deliveryTarget": "Go-live by June 15th",
@@ -34,9 +34,9 @@
     ],
     "lastQuoteDate": "2026-04-24T20:07:35.271Z",
     "advanceValue": 0,
-    "lastInvoiceDate": "2026-04-27T14:23:19.942Z",
-    "invoiceNo": "INV-0001",
-    "isPaid": true,
+    "lastInvoiceDate": "2026-04-28T17:55:01.922Z",
+    "invoiceNo": "INV-0001-2",
+    "isPaid": false,
     "paidAt": "27 Apr 2026, 07:53 pm",
     "history": [
       {
@@ -45,6 +45,10 @@
         "prev": "Order Confirmed",
         "next": "Closed Lost"
       }
-    ]
+    ],
+    "invoiceCount": 2,
+    "invoicePaidValue": 250000,
+    "invoiceBalanceDue": 250000,
+    "invoiceStatus": "partial"
   }
 ]

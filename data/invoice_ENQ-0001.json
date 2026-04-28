@@ -1,29 +1,108 @@
 {
-  "invoiceNo": "INV-0001",
-  "date": "25 April 2026",
-  "lastSaved": "2026-04-27T14:23:19.946Z",
-  "clientName": "Future Tech Systems",
-  "address": "Bangalore, Karnataka, India\nPh: +91 99887 76655\nEmail: contact@futuretech.com",
-  "subject": "Invoice for Advance - React Next.js Website",
-  "items": [
+  "leadId": "ENQ-0001",
+  "invoices": [
     {
-      "id": 1,
-      "desc": "Advance for project React Next.js Website - as per project scope and discussion.",
-      "qty": 1,
-      "rate": 250000,
-      "total": 250000
+      "invoiceNo": "INV-0001",
+      "date": "25 April 2026",
+      "clientName": "Future Tech Systems",
+      "address": "Bangalore, Karnataka, India\nPh: +91 99887 76655\nEmail: contact@futuretech.com",
+      "subject": "Invoice for Advance - React Next.js Website",
+      "items": [
+        {
+          "id": 1,
+          "desc": "Advance for project React Next.js Website - as per project scope and discussion.",
+          "qty": 1,
+          "rate": 250000,
+          "total": 250000
+        }
+      ],
+      "subtotal": 250000,
+      "discount": 0,
+      "tax": 0,
+      "bankDetails": "A/C: 50100656771132\nIFSC: HDFC0000651\nBranch: NOIDA SEC 26\nAccount Type: SAVINGS",
+      "total": 250000,
+      "companyName": "Pixelkraft Software Solutions",
+      "companyAddress": "Pilibhit 262001 UP India",
+      "companyEmail": "official@pixelkrafts.in",
+      "companyPhone": "+917579966178",
+      "companyWebsite": "www.pixelkrafts.in",
+      "companyInstagram": "@pixelkrafts_in",
+      "msmeNumber": "UDYAM-UP-60-0038284",
+      "isPaid": true,
+      "paidAt": "27 Apr 2026, 07:53 pm",
+      "lastSaved": "2026-04-28T17:54:02.722Z",
+      "amountPaid": 250000
+    },
+    {
+      "invoiceNo": "INV-0001-2",
+      "date": "28 April 2026",
+      "clientName": "Future Tech Systems",
+      "address": "Bangalore, Karnataka, India",
+      "subject": "Invoice for React Next.js Website - Balance Due",
+      "items": [
+        {
+          "id": 1,
+          "desc": "Invoice for React Next.js Website balance.",
+          "qty": 1,
+          "rate": 250000,
+          "total": 250000
+        }
+      ],
+      "subtotal": 250000,
+      "discount": 0,
+      "tax": 0,
+      "bankDetails": "A/C: 50100656771132\nIFSC: HDFC0000651\nBranch: NOIDA SEC 26\nAccount Type: SAVINGS",
+      "total": 250000,
+      "companyName": "Pixelkraft",
+      "companyAddress": "805 Wasil Pilibhit 262001 UP India",
+      "companyEmail": "official@pixelkrafts.in",
+      "companyPhone": "+917579966178",
+      "companyWebsite": "www.pixelkrafts.in",
+      "companyInstagram": "@pixelkrafts_in",
+      "msmeNumber": "UDYAM-UP-60-0038284",
+      "isPaid": false,
+      "paidAt": "27 Apr 2026, 07:53 pm",
+      "lastSaved": "2026-04-28T17:55:01.922Z",
+      "amountPaid": 250000
     }
   ],
-  "subtotal": 250000,
-  "discount": 0,
-  "tax": 18,
-  "bankDetails": "A/C: 50100656771132\nIFSC: HDFC0000651\nBranch: NOIDA SEC 26\nAccount Type: SAVINGS",
-  "total": 295000,
-  "companyName": "Pixelkraft Software Solutions",
-  "companyAddress": "Pilibhit 262001 UP India",
-  "companyEmail": "official@pixelkrafts.in",
-  "companyPhone": "+917579966178",
-  "msmeNumber": "UDYAM-UP-60-0038284",
-  "isPaid": true,
-  "paidAt": "27 Apr 2026, 07:53 pm"
+  "totalLeadValue": 500000,
+  "totalPaidValue": 250000,
+  "balanceDue": 250000,
+  "isFullyPaid": false,
+  "updatedAt": "2026-04-28T17:55:01.939Z",
+  "lastInvoiceNo": "INV-0001-2",
+  "currentInvoice": {
+    "invoiceNo": "INV-0001-2",
+    "date": "28 April 2026",
+    "clientName": "Future Tech Systems",
+    "address": "Bangalore, Karnataka, India",
+    "subject": "Invoice for React Next.js Website - Balance Due",
+    "items": [
+      {
+        "id": 1,
+        "desc": "Invoice for React Next.js Website balance.",
+        "qty": 1,
+        "rate": 250000,
+        "total": 250000
+      }
+    ],
+    "subtotal": 250000,
+    "discount": 0,
+    "tax": 0,
+    "bankDetails": "A/C: 50100656771132\nIFSC: HDFC0000651\nBranch: NOIDA SEC 26\nAccount Type: SAVINGS",
+    "total": 250000,
+    "companyName": "Pixelkraft",
+    "companyAddress": "805 Wasil Pilibhit 262001 UP India",
+    "companyEmail": "official@pixelkrafts.in",
+    "companyPhone": "+917579966178",
+    "companyWebsite": "www.pixelkrafts.in",
+    "companyInstagram": "@pixelkrafts_in",
+    "msmeNumber": "UDYAM-UP-60-0038284",
+    "isPaid": false,
+    "paidAt": "27 Apr 2026, 07:53 pm",
+    "lastSaved": "2026-04-28T17:55:01.922Z",
+    "amountPaid": 250000
+  },
+  "lastSaved": "2026-04-28T17:55:01.939Z"
 }

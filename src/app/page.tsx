@@ -21,7 +21,7 @@ import {
   type ProductItem,
   type TabKey,
 } from '../lib/crm-data';
-import { getLeadBalanceDue } from '../lib/invoice-utils';
+import { getLeadBalanceDue, normalizeInvoiceRecord, summarizeInvoiceLedger, type InvoiceLedger, type InvoiceRecord } from '../lib/invoice-utils';
 
 export type Template = {
   id: string;
@@ -52,6 +52,17 @@ interface SpeechRecognitionLike {
   onend: (() => void) | null;
   start(): void;
   stop(): void;
+}
+
+interface BillingInvoiceRow {
+  leadId: string;
+  leadName: string;
+  invoiceNo: string;
+  date: string;
+  amount: number;
+  isPaid: boolean;
+  paidAt?: string;
+  source: 'new' | 'ledger';
 }
 
 interface LeadEditDraft {
@@ -314,6 +325,8 @@ export default function Home() {
   const [editingProductKey, setEditingProductKey] = useState<string | null>(null);
   const [editingProductValue, setEditingProductValue] = useState('');
   const [isInvoiceBusy, setIsInvoiceBusy] = useState(false);
+  const [billingInvoices, setBillingInvoices] = useState<BillingInvoiceRow[]>([]);
+  const [isBillingInvoicesLoading, setIsBillingInvoicesLoading] = useState(false);
 
   const isMounted = useRef(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -463,6 +476,115 @@ export default function Home() {
       recognitionRef.current = null;
     };
   }, []);
+
+  // Load billing invoices when tab changes or leads update
+  useEffect(() => {
+    if (tab !== 'invoices') return;
+
+    let cancelled = false;
+
+    const loadBillingInvoices = async () => {
+      setIsBillingInvoicesLoading(true);
+      try {
+        const invoiceRows = await Promise.all(
+          leads
+            .filter((lead) => lead.status === 'Order Confirmed' || Boolean(lead.invoiceCount) || Boolean(lead.invoiceNo))
+            .map(async (lead) => {
+              try {
+                const invoiceData = await requestJson<any>(`/api/leads/${lead.id}/invoice?t=${Date.now()}`, { cache: 'no-store' });
+
+                if (Array.isArray(invoiceData.invoices)) {
+                  const ledger = invoiceData as InvoiceLedger;
+                  return ledger.invoices.map((entry: InvoiceRecord, index: number) => {
+                    const invoice = normalizeInvoiceRecord(entry);
+                    return {
+                      leadId: lead.id,
+                      leadName: lead.clientName,
+                      invoiceNo: invoice.invoiceNo || `${lead.id.replace('ENQ-', 'INV-')}-${index + 1}`,
+                      date: invoice.date || lead.date,
+                      amount: Number(invoice.amountPaid ?? invoice.subtotal ?? invoice.total ?? 0),
+                      isPaid: Boolean(invoice.isPaid),
+                      paidAt: invoice.paidAt,
+                      source: 'ledger' as const,
+                    } satisfies BillingInvoiceRow;
+                  });
+                }
+
+                const invoice = normalizeInvoiceRecord(invoiceData);
+                return [{
+                  leadId: lead.id,
+                  leadName: lead.clientName,
+                  invoiceNo: invoice.invoiceNo || lead.id.replace('ENQ-', 'INV-'),
+                  date: invoice.date || lead.date,
+                  amount: Number(invoice.amountPaid ?? invoice.subtotal ?? invoice.total ?? 0),
+                  isPaid: Boolean(invoice.isPaid),
+                  paidAt: invoice.paidAt,
+                  source: 'new' as const,
+                } satisfies BillingInvoiceRow];
+              } catch {
+                return [] as BillingInvoiceRow[];
+              }
+            })
+        );
+
+        if (!cancelled) {
+          setBillingInvoices(invoiceRows.flat());
+        }
+      } finally {
+        if (!cancelled) {
+          setIsBillingInvoicesLoading(false);
+        }
+      }
+    };
+
+    loadBillingInvoices();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, leads]);
+
+  // Initialize with dummy lead if no leads exist
+  useEffect(() => {
+    if (leads.length === 0 && !isLoading && mounted) {
+      const dummyId = 'ENQ-0001';
+      const demo: Lead = {
+        id: dummyId,
+        date: new Date().toISOString().slice(0, 10),
+        clientName: 'Future Tech Systems',
+        email: 'contact@futuretech.com',
+        phone: '+91 99887 76655',
+        country: 'India',
+        state: 'Karnataka',
+        city: 'Bangalore',
+        clientType: 'Enterprise',
+        brand: 'Development',
+        productCategory: 'Web Dev',
+        productName: 'React Next.js Website',
+        owner: owners[0] || 'Shuja',
+        status: 'New',
+        priority: 'High',
+        expectedValue: 500000,
+        advanceValue: 100000,
+        quantity: 1,
+        poNumber: '',
+        closurePercent: 20,
+        orderExpectedDate: '2026-06-01',
+        orderExecutionBy: 'Dev Team',
+        deliveryTarget: 'Go-live by June 15th',
+        notes: 'Initial inquiry for a corporate website redesign and migration to Next.js.',
+        images: [],
+        enquiryItems: [
+          { brand: 'Development', productCategory: 'Web Dev', productName: 'React Next.js Website' }
+        ],
+        createdAt: new Date().toISOString(),
+      };
+      setLeads([demo]);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(LEADS_CACHE_KEY, JSON.stringify([demo]));
+      }
+    }
+  }, [isLoading, mounted, owners]);
 
   const handleLogout = () => {
     document.cookie = 'crm-auth=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
@@ -3407,47 +3529,44 @@ export default function Home() {
 
             <div className="mgmt-card">
               <div className="mgmt-card-header">
-                <h3 className="mgmt-card-title">Confirmed Orders</h3>
+                <h3 className="mgmt-card-title">Invoice Ledger</h3>
               </div>
               <div className="mgmt-list">
-                {leads.filter(l => l.status === 'Order Confirmed').map((l) => (
-                  <div key={l.id} className="mgmt-list-item">
-                    <div className="mgmt-item-icon" style={{ background: 'var(--green-soft)', color: 'var(--green)' }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                {isBillingInvoicesLoading && (
+                  <div className="mgmt-empty">
+                    <p>Loading invoices...</p>
+                  </div>
+                )}
+                {!isBillingInvoicesLoading && billingInvoices.map((invoice) => (
+                  <div key={`${invoice.leadId}-${invoice.invoiceNo}`} className="mgmt-list-item">
+                    <div className="mgmt-item-icon" style={{ background: invoice.isPaid ? 'var(--green-soft)' : 'var(--blue-soft)', color: invoice.isPaid ? 'var(--green)' : 'var(--blue)' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><path d="M1 10h22"></path></svg>
                     </div>
                     <div className="mgmt-item-body">
-                      <span className="mgmt-item-name">{l.clientName}</span>
-                      <span className="mgmt-item-meta">{l.id} · {money(l.expectedValue)} · {l.brand}</span>
-                      <span className="mgmt-item-meta">Balance due · {money(getLeadBalanceDue(l))}</span>
+                      <span className="mgmt-item-name">{invoice.leadName}</span>
+                      <span className="mgmt-item-meta">{invoice.invoiceNo} · {money(invoice.amount)} · {invoice.source === 'ledger' ? 'Next invoice' : 'Invoice'}</span>
+                      <span className="mgmt-item-meta">{formatDate(invoice.date)} {invoice.isPaid ? '· Paid' : '· Pending'}</span>
                     </div>
                     <div className="mgmt-item-actions">
-                      <button 
-                        className="btn primary" 
-                        onClick={() => router.push(`/enquiry/${l.id}/invoice`)}
-                      >
-                        Edit Invoice
+                      <button className="btn primary" onClick={() => router.push(`/enquiry/${invoice.leadId}/invoice${invoice.source === 'ledger' ? '?new=1' : ''}`)}>
+                        Open
                       </button>
-                      {getLeadBalanceDue(l) > 0 && (
-                        <button className="btn" onClick={() => router.push(`/enquiry/${l.id}/invoice?new=1`)}>
-                          Raise Next Invoice
-                        </button>
-                      )}
                       <button className="btn" onClick={() => {
-                        const slug = l.clientName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+                        const slug = invoice.leadName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
                         window.open(`/invoice/${slug}/view`, '_blank');
                       }}>
                         View Portal
                       </button>
-                      <button className="btn" onClick={() => copyInvoiceLink(l.id)} style={{ background: 'var(--blue)', color: 'white', borderColor: 'var(--blue)' }}>
+                      <button className="btn" onClick={() => copyInvoiceLink(invoice.leadId)} style={{ background: 'var(--blue)', color: 'white', borderColor: 'var(--blue)' }}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '6px' }}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
                         Copy Link
                       </button>
                     </div>
                   </div>
                 ))}
-                {!leads.filter(l => l.status === 'Order Confirmed').length && (
+                {!isBillingInvoicesLoading && !billingInvoices.length && (
                   <div className="mgmt-empty">
-                    <p>No confirmed orders found. Move leads to "Order Confirmed" status to bill them.</p>
+                    <p>No invoices found yet. Raise an invoice from an order confirmed lead to see it here.</p>
                   </div>
                 )}
               </div>

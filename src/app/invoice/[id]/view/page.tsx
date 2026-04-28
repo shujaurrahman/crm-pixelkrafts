@@ -12,7 +12,6 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
   const rawId = resolvedParams?.id || (fallbackParams?.id as string) || '';
   const [invoice, setInvoice] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [balanceDue, setBalanceDue] = useState(0);
 
   // Defaults
   const defaultCompanyName = 'Pixelkraft Software Solutions';
@@ -63,10 +62,8 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
             const summary = summarizeInvoiceLedger({ expectedValue: Number(data.totalLeadValue || 0) }, ledger);
             const currentInvoice = ledger.currentInvoice || ledger.invoices[ledger.invoices.length - 1] || null;
             setInvoice(currentInvoice ? { ...normalizeInvoiceRecord(currentInvoice), ...data, ...currentInvoice } : data);
-            setBalanceDue(summary.balanceDue);
           } else {
             setInvoice(data);
-            setBalanceDue(getLeadBalanceDue(data));
           }
         } else {
           // Fallback to lead data if invoice not found
@@ -96,7 +93,6 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
               amountPaid: lead.invoicePaidValue ?? lead.expectedValue,
               lastSaved: new Date().toISOString()
             });
-            setBalanceDue(getLeadBalanceDue(lead));
           }
         }
       } catch (e) {
@@ -183,22 +179,6 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
       </div>
 
       <div className="invoice-box a4-page" style={{ position: 'relative', overflow: 'hidden' }}>
-        {balanceDue > 0 && (
-          <div
-            className="balance-banner no-print"
-            style={{
-              marginBottom: '16px',
-              padding: '12px 14px',
-              borderRadius: '12px',
-              background: 'rgba(59, 130, 246, 0.08)',
-              color: '#1d4ed8',
-              fontWeight: 600,
-              border: '1px solid rgba(59, 130, 246, 0.18)',
-            }}
-          >
-            <strong>Balance due:</strong> ₹{Math.round(balanceDue).toLocaleString('en-IN')} remains after ₹{Math.round(paidAmount).toLocaleString('en-IN')} invoiced.
-          </div>
-        )}
         {invoice.isPaid && (
           <div className="vertex-ribbon-container">
             <div className="vertex-ribbon paid">PAID</div>

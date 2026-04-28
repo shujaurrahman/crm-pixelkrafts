@@ -179,7 +179,6 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
   const taxableAmount = useMemo(() => subtotal - discountAmount, [subtotal, discountAmount]);
   const taxAmount = useMemo(() => (taxableAmount * gstRate) / 100, [taxableAmount, gstRate]);
   const grandTotal = useMemo(() => taxableAmount + taxAmount, [taxableAmount, taxAmount]);
-  const canRaiseNextInvoice = invoiceBalanceDue > 0 && !isNewInvoiceDraft;
 
   const addItem = () => {
     const nextId = items.length > 0 ? Math.max(...items.map(i => i.id)) + 1 : 1;
@@ -320,7 +319,6 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
           <span className="editor-title">Invoice Editor</span>
         </div>
         <div className="toolbar-right">
-          <span className="balance-pill">Balance Due: ₹{Math.round(invoiceBalanceDue).toLocaleString('en-IN')}</span>
           <button className="btn-save" onClick={saveInvoice} disabled={isSaving}>
             {isSaving ? 'Saving...' : 'Save Invoice'}
           </button>
@@ -330,11 +328,6 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
             </button>
           ) : (
             <span className="paid-badge-toolbar">PAID</span>
-          )}
-          {canRaiseNextInvoice && (
-            <button className="btn-view" onClick={() => router.push(`/enquiry/${id}/invoice?new=1`)}>
-              Raise Next Invoice
-            </button>
           )}
           <button className="btn-view" onClick={() => window.open(`/invoice/${id}/view`, '_blank')}>
             View Portal
@@ -529,7 +522,7 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
               <span className="val">₹{Math.round(invoiceBalanceDue).toLocaleString('en-IN')}</span>
             </div>
             <div className="total-row">
-              <span className="label">Sub Total:</span>
+              <span className="label">{isNewInvoiceDraft ? 'Next Invoice Amount:' : 'Sub Total:'}</span>
               <span className="val">₹{subtotal.toLocaleString('en-IN')}</span>
             </div>
             <div className="total-row">
@@ -604,14 +597,6 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
         }
         .editor-title { font-size: 14px; font-weight: 500; margin-left: 12px; }
         .toolbar-left, .toolbar-right { display: flex; gap: 12px; align-items: center; }
-        .balance-pill {
-          padding: 7px 12px;
-          border-radius: 999px;
-          font-size: 12px;
-          font-weight: 700;
-          background: rgba(59, 130, 246, 0.12);
-          color: #2563eb;
-        }
         
         .btn-back, .btn-view { 
           padding: 8px 16px; 
