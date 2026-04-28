@@ -1250,8 +1250,11 @@ export default function Home() {
   };
 
   const copyInvoiceLink = (leadId: string) => {
-    const invId = leadId.replace('ENQ-', 'INV-');
-    const portalUrl = `${window.location.origin}/invoice/${invId}/view`;
+    const lead = leads.find(l => l.id === leadId);
+    const clientName = lead?.clientName || '';
+    const clientSlug = clientName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    
+    const portalUrl = `${window.location.origin}/invoice/${clientSlug}/view`;
     navigator.clipboard.writeText(portalUrl);
     toast.success('Invoice link copied to clipboard!');
   };
@@ -3410,7 +3413,10 @@ export default function Home() {
                       >
                         Edit Invoice
                       </button>
-                      <button className="btn" onClick={() => window.open(`/invoice/${l.id.replace('ENQ-', 'INV-')}/view`, '_blank')}>
+                      <button className="btn" onClick={() => {
+                        const slug = l.clientName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+                        window.open(`/invoice/${slug}/view`, '_blank');
+                      }}>
                         View Portal
                       </button>
                       <button className="btn" onClick={() => copyInvoiceLink(l.id)} style={{ background: 'var(--blue)', color: 'white', borderColor: 'var(--blue)' }}>
