@@ -162,31 +162,6 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
   const companyInstagram = invoice.companyInstagram || defaultCompanyInstagram;
   const msmeNumber = invoice.msmeNumber || defaultMsmeNumber;
 
-  const handleDeleteInvoice = async () => {
-    if (!window.confirm('Are you sure you want to delete this invoice? This action cannot be undone.')) {
-      return;
-    }
-    
-    try {
-      const leadId = invoice.leadId || rawId.split('-').slice(0, 2).join('-');
-      const response = await fetch(`/api/leads/${leadId}/invoice`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ invoiceNo: invoice.invoiceNo })
-      });
-      
-      if (response.ok) {
-        toast.success('Invoice deleted successfully');
-        setTimeout(() => window.history.back(), 1500);
-      } else {
-        toast.error('Failed to delete invoice');
-      }
-    } catch (e) {
-      console.error('Delete error:', e);
-      toast.error('Error deleting invoice');
-    }
-  };
-
   return (
     <div className="invoice-container theme-adaptive">
       <Toaster position="top-center" richColors />
@@ -194,9 +169,6 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
       <div className="action-bar no-print">
         <button onClick={() => window.print()} className="btn-print">
           Download PDF / Print
-        </button>
-        <button onClick={handleDeleteInvoice} className="btn-delete" title="Delete this invoice">
-          <span style={{ fontSize: '18px' }}>🗑️</span> Delete
         </button>
       </div>
 
@@ -293,61 +265,6 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
           </div>
         )}
 
-        {/* Show previous invoices and balance section if this is a multi-invoice scenario */}
-        {Array.isArray(invoice.invoices) && invoice.invoices.length > 1 && (
-          <div className="ledger-section" style={{ marginTop: '32px', paddingTop: '24px', borderTop: '2px solid #e5e5e9' }}>
-            <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '14px', fontWeight: 600, color: '#333' }}>Invoice History & Payment Ledger</h3>
-            <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid #e5e5e9' }}>
-                  <th style={{ textAlign: 'left', padding: '8px 0', fontWeight: 600 }}>Invoice No</th>
-                  <th style={{ textAlign: 'left', padding: '8px 0', fontWeight: 600 }}>Date</th>
-                  <th style={{ textAlign: 'right', padding: '8px 0', fontWeight: 600 }}>Amount</th>
-                  <th style={{ textAlign: 'right', padding: '8px 0', fontWeight: 600 }}>Paid</th>
-                  <th style={{ textAlign: 'right', padding: '8px 0', fontWeight: 600 }}>Balance</th>
-                  <th style={{ textAlign: 'left', padding: '8px 0', fontWeight: 600 }}>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {invoice.invoices.map((inv: any, idx: number) => {
-                  const normInv = typeof inv === 'object' ? inv : {};
-                  const invAmount = Number(normInv.subtotal || normInv.amount || 0);
-                  const invPaid = Number(normInv.amountPaid || (normInv.isPaid ? invAmount : 0));
-                  const invBalance = invAmount - invPaid;
-                  return (
-                    <tr key={idx} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                      <td style={{ padding: '8px 0' }}>{normInv.invoiceNo || `INV-${idx + 1}`}</td>
-                      <td style={{ padding: '8px 0' }}>{normInv.date ? new Date(normInv.date).toLocaleDateString('en-GB') : '-'}</td>
-                      <td style={{ textAlign: 'right', padding: '8px 0' }}>₹{invAmount.toLocaleString('en-IN')}</td>
-                      <td style={{ textAlign: 'right', padding: '8px 0', color: '#34c759', fontWeight: 600 }}>₹{invPaid.toLocaleString('en-IN')}</td>
-                      <td style={{ textAlign: 'right', padding: '8px 0', color: invBalance > 0 ? '#ff3b30' : '#34c759', fontWeight: 600 }}>₹{invBalance.toLocaleString('en-IN')}</td>
-                      <td style={{ padding: '8px 0', fontSize: '11px', fontWeight: 600, color: normInv.isPaid ? '#34c759' : '#ff9500' }}>
-                        {normInv.isPaid ? '✓ Paid' : 'Pending'}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            
-            {/* Summary row */}
-            <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #e5e5e9', display: 'flex', justifyContent: 'flex-end', gap: '32px' }}>
-              <div style={{ textAlign: 'right' }}>
-                <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#666' }}>Total Expected Value:</p>
-                <p style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>₹{(invoice.totalLeadValue || (subtotal + taxAmount * invoice.invoices.length)).toLocaleString('en-IN')}</p>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#666' }}>Total Paid:</p>
-                <p style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: '#34c759' }}>₹{(invoice.invoices.reduce((sum: number, inv: any) => sum + Number(inv.amountPaid || (inv.isPaid ? inv.subtotal : 0)), 0)).toLocaleString('en-IN')}</p>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#666' }}>Balance Due:</p>
-                <p style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: '#ff3b30' }}>₹{Math.max(0, (invoice.totalLeadValue || (subtotal + taxAmount * invoice.invoices.length)) - invoice.invoices.reduce((sum: number, inv: any) => sum + Number(inv.amountPaid || (inv.isPaid ? inv.subtotal : 0)), 0)).toLocaleString('en-IN')}</p>
-              </div>
-            </div>
-          </div>
-        )}
-
         <footer className="invoice-footer">
           <div className="notes-col">
             <div className="amount-words">
@@ -380,6 +297,13 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
             </div>
           </div>
           <div className="totals-col">
+            {/* Show previous invoices paid if applicable */}
+            {Array.isArray(invoice.invoices) && invoice.invoices.length > 1 && (
+              <div className="total-row" style={{ color: '#8e8e93', fontSize: '13px' }}>
+                <span className="label">Previously Paid:</span>
+                <span className="val" style={{ color: '#34c759' }}>₹{invoice.invoices.slice(0, -1).reduce((sum: number, inv: any) => sum + Number(inv.amountPaid || (inv.isPaid ? inv.subtotal : 0)), 0).toLocaleString('en-IN')}</span>
+              </div>
+            )}
             <div className="total-row">
               <span className="label">Sub Total:</span>
               <span className="val">₹{subtotal.toLocaleString('en-IN')}</span>
@@ -395,9 +319,18 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
               <span className="val">₹{Math.round(taxAmount).toLocaleString('en-IN')}</span>
             </div>
             <div className="total-row grand-total">
-              <span className="label">Grand Total:</span>
+              <span className="label">Grand Total (This Invoice):</span>
               <span className="val">₹{Math.round(grandTotal).toLocaleString('en-IN')}</span>
             </div>
+            {/* Show remaining balance from total project value */}
+            {(invoice.totalLeadValue || invoice.invoices) && (
+              <div className="total-row" style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #f1f1f4', color: '#8e8e93', fontSize: '13px' }}>
+                <span className="label">Remaining Balance:</span>
+                <span className="val" style={{ color: Math.max(0, (invoice.totalLeadValue || 0) - (paidAmount + (Array.isArray(invoice.invoices) && invoice.invoices.length > 1 ? invoice.invoices.slice(0, -1).reduce((sum: number, inv: any) => sum + Number(inv.amountPaid || (inv.isPaid ? inv.subtotal : 0)), 0) : 0))) > 0 ? '#ff3b30' : '#34c759' }}>
+                  ₹{Math.max(0, (invoice.totalLeadValue || 0) - (paidAmount + (Array.isArray(invoice.invoices) && invoice.invoices.length > 1 ? invoice.invoices.slice(0, -1).reduce((sum: number, inv: any) => sum + Number(inv.amountPaid || (inv.isPaid ? inv.subtotal : 0)), 0) : 0))).toLocaleString('en-IN')}
+                </span>
+              </div>
+            )}
           </div>
         </footer>
 
@@ -493,21 +426,7 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
           transition: all 0.2s;
           box-shadow: 0 4px 12px rgba(37, 211, 102, 0.2);
         }
-        .btn-delete { 
-          background: #ff3b30; 
-          color: white; 
-          border: none; 
-          padding: 12px 28px; 
-          border-radius: 10px; 
-          font-weight: 600; 
-          cursor: pointer; 
-          transition: all 0.2s;
-          box-shadow: 0 4px 12px rgba(255, 59, 48, 0.2);
-          display: flex;
-          align-items: center;
-          gap: 6px;
-        }
-        .btn-print:hover, .btn-share:hover, .btn-delete:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.1); }
+        .btn-print:hover, .btn-share:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.1); }
         
         .a4-page { 
           width: 210mm; 
