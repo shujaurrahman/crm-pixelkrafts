@@ -1249,15 +1249,11 @@ export default function Home() {
     }
   };
 
-  const shareInvoiceOnWhatsApp = (leadId: string) => {
-    const lead = leads.find(l => l.id === leadId);
-    const clientName = lead?.clientName || '';
-    const clientSlug = clientName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-    
-    const portalUrl = `${window.location.origin}/invoice/${clientSlug}/view`;
-    const message = `Hello ${clientName}, please find the invoice for your order here: ${portalUrl}`;
-    const waUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
-    window.open(waUrl, '_blank');
+  const copyInvoiceLink = (leadId: string) => {
+    const invId = leadId.replace('ENQ-', 'INV-');
+    const portalUrl = `${window.location.origin}/invoice/${invId}/view`;
+    navigator.clipboard.writeText(portalUrl);
+    toast.success('Invoice link copied to clipboard!');
   };
 
   const startLeadEdit = (lead: Lead) => {
@@ -3417,8 +3413,9 @@ export default function Home() {
                       <button className="btn" onClick={() => window.open(`/invoice/${l.id.replace('ENQ-', 'INV-')}/view`, '_blank')}>
                         View Portal
                       </button>
-                      <button className="btn" onClick={() => shareInvoiceOnWhatsApp(l.id)} style={{ background: '#22c55e', color: 'white', borderColor: '#22c55e' }}>
-                        WhatsApp
+                      <button className="btn" onClick={() => copyInvoiceLink(l.id)} style={{ background: 'var(--blue)', color: 'white', borderColor: 'var(--blue)' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '6px' }}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                        Copy Link
                       </button>
                     </div>
                   </div>
