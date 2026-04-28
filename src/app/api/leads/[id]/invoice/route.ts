@@ -1,6 +1,13 @@
 import { NextResponse } from 'next/server';
 import { readJsonBlob, writeJsonBlob } from '@/lib/blob-store';
 import { Lead } from '@/lib/crm-data';
+import {
+  buildInvoiceNo,
+  normalizeInvoiceRecord,
+  summarizeInvoiceLedger,
+  type InvoiceLedger,
+  type InvoiceRecord,
+} from '@/lib/invoice-utils';
 
 const LEADS_BLOB_NAME = 'leads.json';
 
@@ -14,8 +21,50 @@ export async function POST(
 
     // 1. Load Leads
     const leads = await readJsonBlob<Lead[]>(LEADS_BLOB_NAME, []);
+    const currentLead = leads.find((lead) => lead.id === leadId);
 
     let found = false;
+
+    const existingLedger = await readJsonBlob<InvoiceLedger | InvoiceRecord | null>(`invoice_${leadId}.json`, null);
+    const invoiceList = Array.isArray((existingLedger as InvoiceLedger | null)?.invoices)
+      ? [...((existingLedger as InvoiceLedger).invoices || [])]
+      : existingLedger
+        ? [normalizeInvoiceRecord(existingLedger)]
+        : [];
+
+    const normalizedInvoice = normalizeInvoiceRecord({
+      ...invoiceData,
+      invoiceNo: invoiceData.invoiceNo || buildInvoiceNo(leadId, invoiceList.length),
+      amountPaid: Number.isFinite(Number(invoiceData.amountPaid))
+        ? Number(invoiceData.amountPaid)
+        : Number.isFinite(Number(invoiceData.subtotal))
+          ? Number(invoiceData.subtotal)
+          : Number(invoiceData.total || 0),
+    });
+
+    const invoiceIndex = invoiceList.findIndex((entry) => entry.invoiceNo === normalizedInvoice.invoiceNo);
+    if (invoiceIndex >= 0) {
+      invoiceList[invoiceIndex] = normalizedInvoice;
+    } else {
+      invoiceList.push(normalizedInvoice);
+    }
+
+    const ledgerDraft: InvoiceLedger = {
+      leadId,
+      invoices: invoiceList,
+      totalLeadValue: Number(currentLead?.expectedValue || normalizedInvoice.subtotal || 0),
+      totalPaidValue: 0,
+      balanceDue: 0,
+      isFullyPaid: false,
+      updatedAt: new Date().toISOString(),
+      lastInvoiceNo: normalizedInvoice.invoiceNo,
+      currentInvoice: normalizedInvoice,
+    };
+
+    const summary = summarizeInvoiceLedger({ expectedValue: ledgerDraft.totalLeadValue }, ledgerDraft);
+    ledgerDraft.totalPaidValue = summary.totalPaidValue;
+    ledgerDraft.balanceDue = summary.balanceDue;
+    ledgerDraft.isFullyPaid = summary.isFullyPaid;
 
     // 2. Find and Update Lead (Optional: mark that invoice was generated)
     const updatedLeads = leads.map((l) => {
@@ -23,10 +72,14 @@ export async function POST(
         found = true;
         return {
           ...l,
-          lastInvoiceDate: new Date().toISOString(),
-          invoiceNo: invoiceData.invoiceNo || l.id.replace('ENQ-', 'INV-'),
-          isPaid: invoiceData.isPaid || false,
-          paidAt: invoiceData.paidAt || '',
+          lastInvoiceDate: normalizedInvoice.lastSaved || new Date().toISOString(),
+          invoiceNo: normalizedInvoice.invoiceNo,
+          invoiceCount: invoiceList.length,
+          invoicePaidValue: summary.totalPaidValue,
+          invoiceBalanceDue: summary.balanceDue,
+          invoiceStatus: summary.isFullyPaid ? 'paid' : summary.totalPaidValue > 0 ? 'partial' : 'unpaid',
+          isPaid: summary.isFullyPaid,
+          paidAt: summary.isFullyPaid ? normalizedInvoice.paidAt || l.paidAt || '' : l.paidAt,
         };
       }
       return l;
@@ -42,8 +95,9 @@ export async function POST(
     // 4. Save Invoice specific data
     const INVOICE_BLOB_NAME = `invoice_${leadId}.json`;
     await writeJsonBlob(INVOICE_BLOB_NAME, {
-      ...invoiceData,
-      lastSaved: new Date().toISOString(),
+      ...ledgerDraft,
+      lastSaved: ledgerDraft.updatedAt,
+      currentInvoice: normalizedInvoice,
     });
 
     return NextResponse.json({ ok: true });
@@ -60,10 +114,20 @@ export async function GET(
   try {
     const { id } = await context.params;
     const INVOICE_BLOB_NAME = `invoice_${id}.json`;
-    const invoiceData = await readJsonBlob(INVOICE_BLOB_NAME, null);
+    const invoiceData = await readJsonBlob<InvoiceLedger | InvoiceRecord | null>(INVOICE_BLOB_NAME, null);
     
     if (!invoiceData) {
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+    }
+
+    if (Array.isArray((invoiceData as InvoiceLedger).invoices)) {
+      const ledger = invoiceData as InvoiceLedger;
+      const currentInvoice = ledger.currentInvoice || ledger.invoices[ledger.invoices.length - 1] || null;
+      return NextResponse.json({
+        ...ledger,
+        ...(currentInvoice || {}),
+        currentInvoice,
+      });
     }
     
     return NextResponse.json(invoiceData);

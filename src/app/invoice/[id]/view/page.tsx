@@ -4,6 +4,7 @@ import { useEffect, useState, use } from 'react';
 import { useParams } from 'next/navigation';
 import { toast, Toaster } from 'sonner';
 import { numberToWords } from '@/lib/number-to-words';
+import { getLeadBalanceDue, normalizeInvoiceRecord, summarizeInvoiceLedger, type InvoiceLedger } from '@/lib/invoice-utils';
 
 export default function InvoicePortal({ params: rawParams }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(rawParams);
@@ -11,6 +12,7 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
   const rawId = resolvedParams?.id || (fallbackParams?.id as string) || '';
   const [invoice, setInvoice] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [balanceDue, setBalanceDue] = useState(0);
 
   // Defaults
   const defaultCompanyName = 'Pixelkraft Software Solutions';
@@ -56,7 +58,16 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
         const data = await res.json();
 
         if (!data.error) {
-          setInvoice(data);
+          if (Array.isArray(data.invoices)) {
+            const ledger = data as InvoiceLedger;
+            const summary = summarizeInvoiceLedger({ expectedValue: Number(data.totalLeadValue || 0) }, ledger);
+            const currentInvoice = ledger.currentInvoice || ledger.invoices[ledger.invoices.length - 1] || null;
+            setInvoice(currentInvoice ? { ...normalizeInvoiceRecord(currentInvoice), ...data, ...currentInvoice } : data);
+            setBalanceDue(summary.balanceDue);
+          } else {
+            setInvoice(data);
+            setBalanceDue(getLeadBalanceDue(data));
+          }
         } else {
           // Fallback to lead data if invoice not found
           const leadsRes = await fetch('/api/leads', { cache: 'no-store' });
@@ -82,8 +93,10 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
               total: Math.round(lead.expectedValue * 1.18),
               isPaid: lead.isPaid,
               paidAt: lead.paidAt,
+              amountPaid: lead.invoicePaidValue ?? lead.expectedValue,
               lastSaved: new Date().toISOString()
             });
+            setBalanceDue(getLeadBalanceDue(lead));
           }
         }
       } catch (e) {
@@ -142,6 +155,7 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
   const taxableAmount = subtotal - discountAmount;
   const taxAmount = (taxableAmount * (invoice.tax || 0)) / 100;
   const grandTotal = taxableAmount + taxAmount;
+  const paidAmount = Number(invoice.amountPaid ?? subtotal ?? 0);
 
   // Use dynamic company details if available
   const companyName = invoice.companyName || defaultCompanyName;
@@ -169,6 +183,22 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
       </div>
 
       <div className="invoice-box a4-page" style={{ position: 'relative', overflow: 'hidden' }}>
+        {balanceDue > 0 && (
+          <div
+            className="balance-banner no-print"
+            style={{
+              marginBottom: '16px',
+              padding: '12px 14px',
+              borderRadius: '12px',
+              background: 'rgba(59, 130, 246, 0.08)',
+              color: '#1d4ed8',
+              fontWeight: 600,
+              border: '1px solid rgba(59, 130, 246, 0.18)',
+            }}
+          >
+            <strong>Balance due:</strong> ₹{Math.round(balanceDue).toLocaleString('en-IN')} remains after ₹{Math.round(paidAmount).toLocaleString('en-IN')} invoiced.
+          </div>
+        )}
         {invoice.isPaid && (
           <div className="vertex-ribbon-container">
             <div className="vertex-ribbon paid">PAID</div>

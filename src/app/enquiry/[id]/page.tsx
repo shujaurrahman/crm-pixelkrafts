@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { type Lead } from '../../../lib/crm-data';
 import { toast } from 'sonner';
+import { getLeadBalanceDue } from '@/lib/invoice-utils';
 
 export default function EnquiryDetailPage() {
   const params = useParams();
@@ -185,6 +186,13 @@ export default function EnquiryDetailPage() {
 
   const closureColor = closure >= 70 ? 'var(--green)' : closure >= 40 ? 'var(--amber)' : 'var(--danger)';
   const closureLabel = closure >= 70 ? 'Hot Lead' : closure >= 40 ? 'Warm Opportunity' : 'Early Stage';
+  const paidAmount = Number(lead.invoicePaidValue ?? 0);
+  const balanceDue = getLeadBalanceDue(lead);
+  const invoiceStatusLabel = lead.invoiceStatus === 'paid'
+    ? 'Fully Paid'
+    : lead.invoiceStatus === 'partial'
+      ? 'Partially Paid'
+      : 'Awaiting Invoice';
 
   const statusColors: Record<string, string> = {
     'New': 'var(--blue)', 'Contacted': 'var(--amber)',
@@ -402,19 +410,22 @@ export default function EnquiryDetailPage() {
             </div>
             <div className="eq-finance-split">
               <div>
-                <span className="eq-finance-label">Advance Received</span>
-                <span className="eq-finance-sub" style={{ color: 'var(--green)' }}>{money(lead.advanceValue ?? 0)}</span>
+                <span className="eq-finance-label">Paid Against Invoices</span>
+                <span className="eq-finance-sub" style={{ color: 'var(--green)' }}>{money(paidAmount)}</span>
               </div>
               <div>
                 <span className="eq-finance-label">Balance Due</span>
-                <span className="eq-finance-sub">{money(lead.expectedValue - (lead.advanceValue ?? 0))}</span>
+                <span className="eq-finance-sub">{money(balanceDue)}</span>
               </div>
+            </div>
+            <div className="eq-progress-wrap" style={{ marginTop: '12px' }}>
+              <span className="eq-progress-label" style={{ marginBottom: '8px' }}>{invoiceStatusLabel}</span>
             </div>
             <div className="eq-progress-wrap">
               <div className="eq-progress-bar">
-                <div className="eq-progress-fill" style={{ width: `${advancePct}%` }} />
+                <div className="eq-progress-fill" style={{ width: `${lead.expectedValue > 0 ? Math.min(100, Math.round((paidAmount / lead.expectedValue) * 100)) : 0}%` }} />
               </div>
-              <span className="eq-progress-label">{advancePct}% collected</span>
+              <span className="eq-progress-label">{lead.expectedValue > 0 ? Math.min(100, Math.round((paidAmount / lead.expectedValue) * 100)) : 0}% collected</span>
             </div>
           </section>
 

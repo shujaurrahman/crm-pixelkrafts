@@ -1,16 +1,25 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo, use } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Lead } from '@/lib/crm-data';
 import { toast, Toaster } from 'sonner';
 import { numberToWords } from '@/lib/number-to-words';
+import {
+  buildInvoiceNo,
+  getLeadBalanceDue,
+  normalizeInvoiceRecord,
+  summarizeInvoiceLedger,
+  type InvoiceLedger,
+} from '@/lib/invoice-utils';
 
 export default function InvoiceEditor({ params: rawParams }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(rawParams);
   const fallbackParams = useParams();
+  const searchParams = useSearchParams();
   const id = resolvedParams?.id || (fallbackParams?.id as string) || '';
   const router = useRouter();
+  const isNewInvoiceDraft = searchParams.get('new') === '1';
 
   const [lead, setLead] = useState<Lead | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -40,6 +49,9 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
   const [notes, setNotes] = useState('');
   const [isPaid, setIsPaid] = useState(false);
   const [paidAt, setPaidAt] = useState('');
+  const [invoiceBalanceDue, setInvoiceBalanceDue] = useState(0);
+  const [invoicePaidValue, setInvoicePaidValue] = useState(0);
+  const [invoiceCount, setInvoiceCount] = useState(0);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -52,26 +64,91 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
         const invRes = await fetch(`/api/leads/${id}/invoice?t=${Date.now()}`);
         if (invRes.ok) {
           const invData = await invRes.json();
-          setInvoiceNo(invData.invoiceNo || `INV-${String(id).split('-')[1] || id}`);
-          setInvoiceDate(invData.date || new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }));
-          setClientName(invData.clientName || found?.clientName || '');
-          setToAddress(invData.address || [found?.city, found?.state, found?.country].filter(Boolean).join(', '));
-          if (invData.subject) setSubject(invData.subject);
-          if (invData.items) setItems(invData.items);
-          if (invData.discount !== undefined) setDiscountRate(invData.discount);
-          if (invData.tax !== undefined) setGstRate(invData.tax);
-          if (invData.bankDetails) setBankDetails(invData.bankDetails);
-          
-          // Load company details if present
-          if (invData.companyName) setCompanyName(invData.companyName);
-          if (invData.companyAddress) setCompanyAddress(invData.companyAddress);
-          if (invData.companyEmail) setCompanyEmail(invData.companyEmail);
-          if (invData.companyPhone) setCompanyPhone(invData.companyPhone);
-          if (invData.companyWebsite) setCompanyWebsite(invData.companyWebsite);
-          if (invData.companyInstagram) setCompanyInstagram(invData.companyInstagram);
-          if (invData.msmeNumber) setMsmeNumber(invData.msmeNumber);
-          if (invData.isPaid) setIsPaid(true);
-          if (invData.paidAt) setPaidAt(invData.paidAt);
+          const ledgerInvoices = Array.isArray(invData.invoices)
+            ? invData.invoices.map((entry: any) => normalizeInvoiceRecord(entry))
+            : invData.invoiceNo
+              ? [normalizeInvoiceRecord(invData)]
+              : [];
+          const latestInvoice = invData.currentInvoice
+            ? normalizeInvoiceRecord(invData.currentInvoice)
+            : ledgerInvoices[ledgerInvoices.length - 1] || null;
+          const summary = summarizeInvoiceLedger(
+            { expectedValue: Number(found?.expectedValue || invData.totalLeadValue || 0) },
+            Array.isArray(invData.invoices)
+              ? invData as InvoiceLedger
+              : {
+                  leadId: id,
+                  invoices: ledgerInvoices,
+                  totalLeadValue: Number(found?.expectedValue || 0),
+                  totalPaidValue: 0,
+                  balanceDue: 0,
+                  isFullyPaid: false,
+                  updatedAt: new Date().toISOString(),
+                  currentInvoice: latestInvoice || undefined,
+                }
+          );
+
+          const leadBalance = found ? getLeadBalanceDue(found) : summary.balanceDue;
+          const draftAmount = Number(found?.advanceValue || summary.balanceDue || leadBalance || found?.expectedValue || 0);
+          const nextInvoiceNo = buildInvoiceNo(id, ledgerInvoices.length);
+
+          if (isNewInvoiceDraft) {
+            setInvoiceNo(nextInvoiceNo);
+            setInvoiceDate(new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }));
+            setClientName(found?.clientName || latestInvoice?.clientName || '');
+            setToAddress([found?.city, found?.state, found?.country].filter(Boolean).join(', '));
+            setSubject(`Invoice for ${found?.productName || 'Project'} - Balance Due`);
+            setItems([{
+              id: 1,
+              desc: `Invoice for ${found?.productName || 'project'} balance.`,
+              qty: 1,
+              rate: Math.round(draftAmount),
+              total: Math.round(draftAmount),
+            }]);
+            setIsPaid(false);
+            setPaidAt('');
+          } else if (latestInvoice) {
+            setInvoiceNo(latestInvoice.invoiceNo || nextInvoiceNo);
+            setInvoiceDate(latestInvoice.date || new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }));
+            setClientName(latestInvoice.clientName || found?.clientName || '');
+            setToAddress(latestInvoice.address || [found?.city, found?.state, found?.country].filter(Boolean).join(', '));
+            if (latestInvoice.subject) setSubject(latestInvoice.subject);
+            if (latestInvoice.items) setItems(latestInvoice.items);
+            if (latestInvoice.discount !== undefined) setDiscountRate(latestInvoice.discount);
+            if (latestInvoice.tax !== undefined) setGstRate(latestInvoice.tax);
+            if (latestInvoice.bankDetails) setBankDetails(latestInvoice.bankDetails);
+
+            if (latestInvoice.companyName) setCompanyName(latestInvoice.companyName);
+            if (latestInvoice.companyAddress) setCompanyAddress(latestInvoice.companyAddress);
+            if (latestInvoice.companyEmail) setCompanyEmail(latestInvoice.companyEmail);
+            if (latestInvoice.companyPhone) setCompanyPhone(latestInvoice.companyPhone);
+            if (latestInvoice.companyWebsite) setCompanyWebsite(latestInvoice.companyWebsite);
+            if (latestInvoice.companyInstagram) setCompanyInstagram(latestInvoice.companyInstagram);
+            if (latestInvoice.msmeNumber) setMsmeNumber(latestInvoice.msmeNumber);
+            if (latestInvoice.isPaid) setIsPaid(true);
+            if (latestInvoice.paidAt) setPaidAt(latestInvoice.paidAt);
+          } else if (found) {
+            setInvoiceNo(nextInvoiceNo);
+            setInvoiceDate(new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }));
+            setClientName(found.clientName);
+            const contactInfo = `Ph: ${found.phone || 'N/A'}\nEmail: ${found.email || 'N/A'}`;
+            const locationInfo = [found.city, found.state, found.country].filter(Boolean).join(', ');
+            setToAddress(`${locationInfo}\n${contactInfo}`);
+            setSubject(`Invoice for Advance - ${found.productName || 'Project'}`);
+            setItems([{
+              id: 1,
+              desc: `Advance for project ${found.productName || 'Intimation'} - as per project scope and discussion.`,
+              qty: 1,
+              rate: Math.round(draftAmount),
+              total: Math.round(draftAmount)
+            }]);
+          }
+
+          setInvoiceCount(ledgerInvoices.length || found?.invoiceCount || 0);
+          setInvoicePaidValue(summary.totalPaidValue);
+          setInvoiceBalanceDue(summary.balanceDue);
+          if (summary.isFullyPaid) setIsPaid(true);
+          if (summary.latestInvoice?.paidAt) setPaidAt(summary.latestInvoice.paidAt);
         } else if (found) {
           setLead(found);
           setClientName(found.clientName);
@@ -83,9 +160,10 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
             id: 1,
             desc: `Advance for project ${found.productName || 'Intimation'} - as per project scope and discussion.`,
             qty: 1,
-            rate: Math.round(found.expectedValue * 0.5), // Default 50% advance
-            total: Math.round(found.expectedValue * 0.5)
+            rate: Math.round(found.advanceValue || found.expectedValue),
+            total: Math.round(found.advanceValue || found.expectedValue)
           }]);
+          setInvoiceBalanceDue(getLeadBalanceDue(found));
         }
       } catch (e) {
         toast.error('Failed to load data');
@@ -101,6 +179,7 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
   const taxableAmount = useMemo(() => subtotal - discountAmount, [subtotal, discountAmount]);
   const taxAmount = useMemo(() => (taxableAmount * gstRate) / 100, [taxableAmount, gstRate]);
   const grandTotal = useMemo(() => taxableAmount + taxAmount, [taxableAmount, taxAmount]);
+  const canRaiseNextInvoice = invoiceBalanceDue > 0 && !isNewInvoiceDraft;
 
   const addItem = () => {
     const nextId = items.length > 0 ? Math.max(...items.map(i => i.id)) + 1 : 1;
@@ -148,6 +227,7 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
       msmeNumber,
       isPaid,
       paidAt,
+      amountPaid: subtotal,
     };
 
     try {
@@ -202,7 +282,8 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
       companyInstagram,
       msmeNumber,
       isPaid: true,
-      paidAt: indianTime
+      paidAt: indianTime,
+      amountPaid: subtotal,
     };
 
     try {
@@ -214,6 +295,8 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
       if (res.ok) {
         setIsPaid(true);
         setPaidAt(indianTime);
+        setInvoicePaidValue((current) => current + subtotal);
+        setInvoiceBalanceDue((current) => Math.max(0, current - subtotal));
         toast.success('Invoice marked as Paid!');
       } else {
         throw new Error('Failed to save');
@@ -237,6 +320,7 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
           <span className="editor-title">Invoice Editor</span>
         </div>
         <div className="toolbar-right">
+          <span className="balance-pill">Balance Due: ₹{Math.round(invoiceBalanceDue).toLocaleString('en-IN')}</span>
           <button className="btn-save" onClick={saveInvoice} disabled={isSaving}>
             {isSaving ? 'Saving...' : 'Save Invoice'}
           </button>
@@ -246,6 +330,11 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
             </button>
           ) : (
             <span className="paid-badge-toolbar">PAID</span>
+          )}
+          {canRaiseNextInvoice && (
+            <button className="btn-view" onClick={() => router.push(`/enquiry/${id}/invoice?new=1`)}>
+              Raise Next Invoice
+            </button>
           )}
           <button className="btn-view" onClick={() => window.open(`/invoice/${id}/view`, '_blank')}>
             View Portal
@@ -432,6 +521,14 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
           </div>
           <div className="totals-col">
             <div className="total-row">
+              <span className="label">Paid So Far:</span>
+              <span className="val">₹{Math.round(invoicePaidValue).toLocaleString('en-IN')}</span>
+            </div>
+            <div className="total-row">
+              <span className="label">Remaining Balance:</span>
+              <span className="val">₹{Math.round(invoiceBalanceDue).toLocaleString('en-IN')}</span>
+            </div>
+            <div className="total-row">
               <span className="label">Sub Total:</span>
               <span className="val">₹{subtotal.toLocaleString('en-IN')}</span>
             </div>
@@ -507,6 +604,14 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
         }
         .editor-title { font-size: 14px; font-weight: 500; margin-left: 12px; }
         .toolbar-left, .toolbar-right { display: flex; gap: 12px; align-items: center; }
+        .balance-pill {
+          padding: 7px 12px;
+          border-radius: 999px;
+          font-size: 12px;
+          font-weight: 700;
+          background: rgba(59, 130, 246, 0.12);
+          color: #2563eb;
+        }
         
         .btn-back, .btn-view { 
           padding: 8px 16px; 

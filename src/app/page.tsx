@@ -21,6 +21,7 @@ import {
   type ProductItem,
   type TabKey,
 } from '../lib/crm-data';
+import { getLeadBalanceDue } from '../lib/invoice-utils';
 
 export type Template = {
   id: string;
@@ -1217,8 +1218,14 @@ export default function Home() {
 
   const createInvoice = async (lead: Lead) => {
     setIsInvoiceBusy(true);
+    const invoiceAmount = Math.max(0, lead.invoiceBalanceDue ?? getLeadBalanceDue(lead));
+    if (invoiceAmount <= 0) {
+      toast.info('This lead is fully settled. No new invoice is needed.');
+      setIsInvoiceBusy(false);
+      return;
+    }
     const invoiceData = {
-      invoiceNo: lead.id.replace('ENQ-', 'INV-'),
+      invoiceNo: lead.invoiceNo || lead.id.replace('ENQ-', 'INV-'),
       date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
       clientName: lead.clientName,
       address: [lead.city, lead.state, lead.country].filter(Boolean).join(', '),
@@ -1226,22 +1233,25 @@ export default function Home() {
         id: i + 1,
         desc: item.productName,
         qty: lead.quantity || 1,
-        rate: Math.round(lead.expectedValue / (lead.quantity || 1)),
-        total: lead.expectedValue
+        rate: Math.round(invoiceAmount / (lead.quantity || 1)),
+        total: invoiceAmount
       })),
-      subtotal: lead.expectedValue,
+      subtotal: invoiceAmount,
       discount: 0,
       tax: 18,
-      total: Math.round(lead.expectedValue * 1.18),
+      total: Math.round(invoiceAmount * 1.18),
+      amountPaid: invoiceAmount,
     };
 
     try {
-      await fetch(`/api/leads/${lead.id}/invoice`, {
+      const res = await fetch(`/api/leads/${lead.id}/invoice`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(invoiceData)
       });
+      if (!res.ok) throw new Error('Failed to sync invoice');
       toast.success('Invoice generated successfully!');
-      window.open(`/invoice/${lead.id.replace('ENQ-', 'INV-')}/view`, '_blank');
+      window.open(`/invoice/${invoiceData.invoiceNo}/view`, '_blank');
     } catch (e) {
       toast.error('Failed to generate invoice');
     } finally {
@@ -2133,6 +2143,9 @@ export default function Home() {
                                       ></div>
                                     </div>
                                     <span>{lead.closurePercent !== undefined ? `${lead.closurePercent}%` : '-'}</span>
+                                  </div>
+                                  <div style={{ marginTop: '6px', fontSize: '11px', color: 'var(--muted)' }}>
+                                    Balance: {money(getLeadBalanceDue(lead))}
                                   </div>
                                 </td>
                                 <td>{money(lead.expectedValue)}</td>
@@ -3405,6 +3418,7 @@ export default function Home() {
                     <div className="mgmt-item-body">
                       <span className="mgmt-item-name">{l.clientName}</span>
                       <span className="mgmt-item-meta">{l.id} · {money(l.expectedValue)} · {l.brand}</span>
+                      <span className="mgmt-item-meta">Balance due · {money(getLeadBalanceDue(l))}</span>
                     </div>
                     <div className="mgmt-item-actions">
                       <button 
@@ -3413,6 +3427,11 @@ export default function Home() {
                       >
                         Edit Invoice
                       </button>
+                      {getLeadBalanceDue(l) > 0 && (
+                        <button className="btn" onClick={() => router.push(`/enquiry/${l.id}/invoice?new=1`)}>
+                          Raise Next Invoice
+                        </button>
+                      )}
                       <button className="btn" onClick={() => {
                         const slug = l.clientName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
                         window.open(`/invoice/${slug}/view`, '_blank');

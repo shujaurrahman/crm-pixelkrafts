@@ -53,6 +53,10 @@ export interface Lead {
   acceptedAt?: string;
   lastInvoiceDate?: string;
   invoiceNo?: string;
+  invoiceCount?: number;
+  invoicePaidValue?: number;
+  invoiceBalanceDue?: number;
+  invoiceStatus?: 'unpaid' | 'partial' | 'paid';
   isPaid?: boolean;
   paidAt?: string;
 }
