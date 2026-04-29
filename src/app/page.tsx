@@ -483,7 +483,7 @@ export default function Home() {
 
   // Load billing invoices when tab changes or leads update
   useEffect(() => {
-    if (tab !== 'invoices') return;
+    if (tab !== 'invoices' && tab !== 'dashboard') return;
 
     let cancelled = false;
 
@@ -749,7 +749,23 @@ export default function Home() {
     });
 
     const openLeads = leads.filter((x) => x.status !== 'Order Confirmed' && x.status !== 'Closed Lost').length;
-    const conversionRate = leads.length ? ((byStatus['Order Confirmed'] || 0) / leads.length) * 100 : 0;
+    const wonLeadsList = leads.filter((x) => x.status === 'Order Confirmed');
+    const avgTimeToClose = wonLeadsList.length 
+      ? wonLeadsList.reduce((acc, l) => {
+          const start = new Date(l.createdAt).getTime();
+          const end = new Date(l.acceptedAt || l.date).getTime();
+          return acc + (end - start);
+        }, 0) / (wonLeadsList.length * 1000 * 60 * 60 * 24)
+      : 0;
+
+    const byClientType: Record<string, number> = {};
+    const byCity: Record<string, number> = {};
+    leads.forEach(l => {
+      byClientType[l.clientType] = (byClientType[l.clientType] || 0) + 1;
+      if (l.city) byCity[l.city] = (byCity[l.city] || 0) + 1;
+    });
+
+    const conversionRate = leads.length ? (wonLeadsList.length / leads.length) * 100 : 0;
     const avgDeal = leads.length ? totalValue / leads.length : 0;
     const avgOpenDeal = openLeads ? openValue / openLeads : 0;
     const openPipelineShare = totalValue ? (openValue / totalValue) * 100 : 0;
@@ -790,6 +806,9 @@ export default function Home() {
       paidInvoicesCount,
       billingInvoicesCount: billingInvoices.length,
       totalInvoiced: receivedAmount + pendingAmount,
+      avgTimeToClose,
+      byClientType: Object.entries(byClientType).sort((a,b) => b[1]-a[1]).slice(0, 5),
+      byCity: Object.entries(byCity).sort((a,b) => b[1]-a[1]).slice(0, 5),
     };
   }, [leads, billingInvoices]);
 
@@ -2132,7 +2151,59 @@ export default function Home() {
                 </article>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px', marginTop: '20px' }}>
+                <article className="card panel">
+                  <h3>Conversion Funnel</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '12px' }}>
+                    {STATUSES.map((status, i) => {
+                      const count = analytics.byStatus[status] || 0;
+                      const percentage = analytics.totalLeads ? (count / analytics.totalLeads) * 100 : 0;
+                      const opacity = 1 - (i * 0.15);
+                      return (
+                        <div key={status} style={{ position: 'relative', height: '32px', marginBottom: '4px' }}>
+                          <div style={{ 
+                            position: 'absolute', 
+                            left: 0, 
+                            top: 0, 
+                            height: '100%', 
+                            width: `${Math.max(percentage, 5)}%`, 
+                            background: 'var(--blue)', 
+                            opacity,
+                            borderRadius: '4px',
+                            transition: 'width 0.5s ease'
+                          }} />
+                          <div style={{ position: 'absolute', inset: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 12px', fontSize: '11px', fontWeight: 700, color: i < 3 ? 'white' : 'var(--text)' }}>
+                            <span>{status}</span>
+                            <span>{count}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </article>
+
+                <article className="card panel">
+                  <h3>Priority Mix</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '8px' }}>
+                    {(['High', 'Medium', 'Low'] as Priority[]).map((level) => {
+                      const count = analytics.byPriority[level] || 0;
+                      const pct = analytics.totalLeads ? (count / analytics.totalLeads) * 100 : 0;
+                      const color = level === 'High' ? 'var(--danger)' : level === 'Medium' ? 'var(--amber)' : 'var(--green)';
+                      return (
+                        <div key={level}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
+                            <span style={{ fontWeight: 600 }}>{level} Priority</span>
+                            <strong>{count}</strong>
+                          </div>
+                          <div style={{ height: '8px', background: 'var(--line)', borderRadius: '4px', overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${pct}%`, background: color }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </article>
+
                 <article className="card panel">
                   <div className="header" style={{ padding: 0, border: 'none', background: 'transparent', height: 'auto', marginBottom: '16px' }}>
                     <h3 style={{ margin: 0 }}>Monthly Trend</h3>
@@ -2178,36 +2249,9 @@ export default function Home() {
                     )}
                   </div>
                 </article>
-
-                <article className="card panel">
-                  <h3>Lead Status Mix</h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {STATUSES.map(status => {
-                      const count = analytics.byStatus[status] || 0;
-                      const percentage = analytics.totalLeads ? (count / analytics.totalLeads) * 100 : 0;
-                      return (
-                        <div key={status}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
-                            <span>{status}</span>
-                            <span style={{ fontWeight: 700 }}>{count}</span>
-                          </div>
-                          <div style={{ height: '6px', background: 'var(--line)', borderRadius: '3px', overflow: 'hidden' }}>
-                            <div style={{ 
-                              height: '100%', 
-                              width: `${percentage}%`, 
-                              background: status === 'Order Confirmed' ? 'var(--green)' : 
-                                         status === 'Closed Lost' ? 'var(--danger)' : 
-                                         status === 'Quote Sent' ? 'var(--blue)' : 'var(--muted)'
-                            }} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </article>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px', marginTop: '20px' }}>
                 <article className="card panel">
                   <h3>Brand Distribution</h3>
                   {Object.entries(analytics.byBrand).map(([brand, count]) => {
@@ -2232,6 +2276,30 @@ export default function Home() {
                 </article>
 
                 <article className="card panel">
+                  <h3>Lead Origin & Type</h3>
+                  <div className="line-item" style={{ marginBottom: '16px' }}>
+                    <span>Avg. Closure Time</span>
+                    <strong>{analytics.avgTimeToClose.toFixed(1)} Days</strong>
+                  </div>
+                  <h4 style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: '0.05em', marginBottom: '8px' }}>Client Types</h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    {analytics.byClientType.map(([type, count]) => (
+                      <div key={type} style={{ background: 'var(--paper-hover)', padding: '8px', borderRadius: '6px' }}>
+                        <div style={{ fontSize: '10px', color: 'var(--muted)', fontWeight: 700 }}>{type}</div>
+                        <div style={{ fontSize: '14px', fontWeight: 800 }}>{count}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <h4 style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: '0.05em', marginTop: '16px', marginBottom: '8px' }}>Top Cities</h4>
+                  {analytics.byCity.map(([city, count]) => (
+                    <div className="line-item" key={city}>
+                      <span>{city}</span>
+                      <strong>{count}</strong>
+                    </div>
+                  ))}
+                </article>
+
+                <article className="card panel">
                   <h3>AI Analytics Chat</h3>
                   <p style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '16px' }}>
                     Ask about sales performance, risks, or priorities.
@@ -2248,7 +2316,7 @@ export default function Home() {
                     </button>
                   </div>
                   {chatAnswer && (
-                    <div className="answer-box" style={{ marginTop: '16px', padding: '16px', background: 'var(--paper-hover)', borderRadius: '8px', fontSize: '13px', lineHeight: '1.5' }}>
+                    <div className="answer-box" style={{ marginTop: '16px', padding: '16px', background: 'var(--paper-hover)', borderRadius: '8px', fontSize: '13px', lineHeight: '1.5', maxHeight: '150px', overflowY: 'auto' }}>
                       {chatAnswer}
                     </div>
                   )}
