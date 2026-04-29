@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, use } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, usePathname, useSearchParams } from 'next/navigation';
 import { toast, Toaster } from 'sonner';
 import { numberToWords } from '@/lib/number-to-words';
 import { getLeadBalanceDue, normalizeInvoiceRecord, summarizeInvoiceLedger, type InvoiceLedger } from '@/lib/invoice-utils';
@@ -9,7 +9,15 @@ import { getLeadBalanceDue, normalizeInvoiceRecord, summarizeInvoiceLedger, type
 export default function InvoicePortal({ params: rawParams }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(rawParams);
   const fallbackParams = useParams();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const rawId = resolvedParams?.id || (fallbackParams?.id as string) || '';
+  const pathnameSegments = pathname?.split('/').filter(Boolean) || [];
+  const visibleInvoiceToken = pathnameSegments[0] === 'invoice' && pathnameSegments[pathnameSegments.length - 1] === 'view'
+    ? (pathnameSegments[2] || '')
+    : '';
+  const requestedInvoiceNo = (visibleInvoiceToken || searchParams?.get('invoiceNo') || '').toUpperCase();
+  const requestedInvoiceDate = searchParams?.get('invoiceDate') || '';
   const [invoice, setInvoice] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -26,11 +34,15 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
     const fetchData = async () => {
       try {
         let targetId = '';
+        let targetInvoiceNo = requestedInvoiceNo;
 
         // Case 1: Standard ID (ENQ- or INV-)
         if (rawId.startsWith('ENQ-') || rawId.startsWith('INV-')) {
           const baseId = rawId.split('-').slice(0, 2).join('-');
           targetId = baseId.startsWith('INV-') ? baseId.replace('INV-', 'ENQ-') : baseId;
+          if (!targetInvoiceNo && rawId.startsWith('INV-')) {
+            targetInvoiceNo = rawId;
+          }
         } 
         // Case 2: Client Name Slug (e.g., shuja-rahman)
         else {
@@ -60,8 +72,16 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
           if (Array.isArray(data.invoices)) {
             const ledger = data as InvoiceLedger;
             const summary = summarizeInvoiceLedger({ expectedValue: Number(data.totalLeadValue || 0) }, ledger);
-            const currentInvoice = ledger.currentInvoice || ledger.invoices[ledger.invoices.length - 1] || null;
-            setInvoice(currentInvoice ? { ...normalizeInvoiceRecord(currentInvoice), ...data, ...currentInvoice } : data);
+            const selectedByNo = targetInvoiceNo
+              ? ledger.invoices.find((entry) => entry.invoiceNo === targetInvoiceNo)
+              : null;
+            const selectedByDate = !selectedByNo && requestedInvoiceDate
+              ? ledger.invoices.find((entry) => entry.date?.toLowerCase().replace(/[^a-z0-9]+/g, '-') === requestedInvoiceDate)
+              : null;
+            const selectedInvoice = selectedByNo || selectedByDate || ledger.currentInvoice || ledger.invoices[ledger.invoices.length - 1] || null;
+            setInvoice(selectedInvoice
+              ? { ...normalizeInvoiceRecord(selectedInvoice), ...ledger, ...selectedInvoice, ...summary }
+              : { ...ledger, ...summary });
           } else {
             setInvoice(data);
           }
@@ -103,7 +123,7 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
       }
     };
     fetchData();
-  }, [rawId]);
+  }, [rawId, requestedInvoiceNo, requestedInvoiceDate]);
 
   if (loading) return (
     <div className="invoice-container">
@@ -319,7 +339,7 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
               <span className="val">₹{Math.round(taxAmount).toLocaleString('en-IN')}</span>
             </div>
             <div className="total-row grand-total">
-              <span className="label">Grand Total (This Invoice):</span>
+              <span className="label">Grand Total:</span>
               <span className="val">₹{Math.round(grandTotal).toLocaleString('en-IN')}</span>
             </div>
             {/* Show remaining balance from total project value */}

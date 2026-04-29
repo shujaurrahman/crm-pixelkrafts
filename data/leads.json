@@ -34,10 +34,6 @@
     ],
     "lastQuoteDate": "2026-04-24T20:07:35.271Z",
     "advanceValue": 0,
-    "lastInvoiceDate": "2026-04-28T17:55:01.922Z",
-    "invoiceNo": "INV-0001-2",
-    "isPaid": false,
-    "paidAt": "27 Apr 2026, 07:53 pm",
     "history": [
       {
         "date": "2026-04-27T14:22:47.226Z",
@@ -46,9 +42,13 @@
         "next": "Closed Lost"
       }
     ],
-    "invoiceCount": 2,
-    "invoicePaidValue": 250000,
-    "invoiceBalanceDue": 250000,
-    "invoiceStatus": "partial"
+    "isPaid": true,
+    "lastInvoiceDate": "2026-04-29T13:21:40.195Z",
+    "invoiceNo": "INV-0001-4",
+    "invoiceCount": 4,
+    "invoicePaidValue": 500000,
+    "invoiceBalanceDue": 0,
+    "invoiceStatus": "paid",
+    "paidAt": "29 Apr 2026, 06:51 pm"
   }
 ]

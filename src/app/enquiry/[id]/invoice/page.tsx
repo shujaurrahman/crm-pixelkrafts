@@ -322,6 +322,11 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
           <button className="btn-save" onClick={saveInvoice} disabled={isSaving}>
             {isSaving ? 'Saving...' : 'Save Invoice'}
           </button>
+            {!isNewInvoiceDraft && isPaid && invoiceBalanceDue > 0 && (
+              <button className="btn-view" onClick={() => router.push(`/enquiry/${id}/invoice?new=1`)}>
+                Raise Next Invoice
+              </button>
+            )}
           {!isPaid ? (
             <button className="btn-paid" onClick={markAsPaid} disabled={isSaving}>
               Mark Paid
@@ -506,7 +511,7 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
                     <p className="upi-id">7579966178@hdfc</p>
                   </div>
                   <div className="upi-scanner-wrap">
-                    <img src="/UPI.jpeg" alt="UPI Scanner" className="upi-img" />
+                    <img src="/upi-qr.jpg" alt="UPI Scanner" className="upi-img" />
                   </div>
                 </div>
               )}

@@ -16,6 +16,14 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  const invoiceMatch = pathname.match(/^\/invoice\/([^/]+)\/([^/]+)\/view$/);
+  if (invoiceMatch) {
+    const rewrittenUrl = request.nextUrl.clone();
+    rewrittenUrl.pathname = `/invoice/${invoiceMatch[1]}/view`;
+    rewrittenUrl.searchParams.set('invoiceNo', invoiceMatch[2].toUpperCase());
+    return NextResponse.rewrite(rewrittenUrl);
+  }
+
   // 2. Allow public Quotation and Invoice View Portals
   if ((pathname.startsWith('/quote/') || pathname.startsWith('/invoice/')) && pathname.endsWith('/view')) {
     return NextResponse.next();

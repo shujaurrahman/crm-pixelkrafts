@@ -63,6 +63,9 @@ interface BillingInvoiceRow {
   isPaid: boolean;
   paidAt?: string;
   source: 'new' | 'ledger';
+  isLatest: boolean;
+  balanceDue: number;
+  isFullyPaid: boolean;
 }
 
 interface LeadEditDraft {
@@ -495,6 +498,8 @@ export default function Home() {
 
                 if (Array.isArray(invoiceData.invoices)) {
                   const ledger = invoiceData as InvoiceLedger;
+                  const balanceDue = Number(ledger.balanceDue ?? 0);
+                  const isFullyPaid = Boolean(ledger.isFullyPaid || balanceDue <= 0);
                   return ledger.invoices.map((entry: InvoiceRecord, index: number) => {
                     const invoice = normalizeInvoiceRecord(entry);
                     return {
@@ -506,11 +511,16 @@ export default function Home() {
                       isPaid: Boolean(invoice.isPaid),
                       paidAt: invoice.paidAt,
                       source: 'ledger' as const,
+                      isLatest: index === ledger.invoices.length - 1,
+                      balanceDue,
+                      isFullyPaid,
                     } satisfies BillingInvoiceRow;
                   });
                 }
 
                 const invoice = normalizeInvoiceRecord(invoiceData);
+                const balanceDue = Math.max(0, Number(lead.invoiceBalanceDue ?? lead.expectedValue ?? invoice.total ?? 0) - Number(invoice.amountPaid ?? invoice.subtotal ?? invoice.total ?? 0));
+                const isFullyPaid = Boolean(lead.isPaid || balanceDue <= 0);
                 return [{
                   leadId: lead.id,
                   leadName: lead.clientName,
@@ -520,6 +530,9 @@ export default function Home() {
                   isPaid: Boolean(invoice.isPaid),
                   paidAt: invoice.paidAt,
                   source: 'new' as const,
+                  isLatest: true,
+                  balanceDue,
+                  isFullyPaid,
                 } satisfies BillingInvoiceRow];
               } catch {
                 return [] as BillingInvoiceRow[];
@@ -1381,12 +1394,55 @@ export default function Home() {
     }
   };
 
-  const copyInvoiceLink = (leadId: string) => {
-    const lead = leads.find(l => l.id === leadId);
-    const clientName = lead?.clientName || '';
-    const clientSlug = clientName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-    
-    const portalUrl = `${window.location.origin}/invoice/${clientSlug}/view`;
+  const markBillingInvoicePaid = async (invoice: BillingInvoiceRow) => {
+    const paidAt = new Date().toLocaleString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+
+    try {
+      const response = await fetch(`/api/leads/${invoice.leadId}/invoice`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          invoiceNo: invoice.invoiceNo,
+          date: invoice.date,
+          clientName: invoice.leadName,
+          address: '',
+          items: [{ id: 1, desc: 'Invoice payment', qty: 1, rate: invoice.amount, total: invoice.amount }],
+          subtotal: invoice.amount,
+          discount: 0,
+          tax: 0,
+          total: invoice.amount,
+          amountPaid: invoice.amount,
+          isPaid: true,
+          paidAt,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to mark invoice paid');
+
+      setBillingInvoices((current) => current.map((row) => (
+        row.leadId === invoice.leadId && row.invoiceNo === invoice.invoiceNo
+          ? { ...row, isPaid: true, paidAt }
+          : row
+      )));
+      toast.success('Invoice marked as paid');
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to mark invoice as paid');
+    }
+  };
+
+  const copyInvoiceLink = (invoice: BillingInvoiceRow) => {
+    const leadSlug = invoice.leadName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const invoiceToken = invoice.invoiceNo.toLowerCase();
+    const portalUrl = `${window.location.origin}/invoice/${leadSlug}/${invoiceToken}/view`;
     navigator.clipboard.writeText(portalUrl);
     toast.success('Invoice link copied to clipboard!');
   };
@@ -2245,10 +2301,21 @@ export default function Home() {
                                 </td>
                                 <td>{requestedNos}</td>
                                 <td className="status-cell">
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center', textAlign: 'center' }}>
                                     <span className={`status status-pill ${statusClass(lead.status)}`}>{lead.status}</span>
                                     {lead.isPaid && (
                                       <span className="status-badge won" style={{ fontSize: '10px', padding: '2px 8px', background: 'var(--blue-soft)', color: 'var(--blue)' }}>✓ Paid</span>
+                                    )}
+                                    {lead.status === 'Order Confirmed' && !lead.invoiceCount && !lead.invoiceNo && (
+                                      <div style={{ marginTop: '2px', display: 'flex', justifyContent: 'center', width: '100%' }}>
+                                        <button
+                                          className="btn btn-compact"
+                                          onClick={(e) => { e.stopPropagation(); router.push(`/enquiry/${lead.id}/invoice?new=1`); }}
+                                          style={{ background: 'var(--green)', color: 'white', borderColor: 'var(--green)', padding: '6px 10px', fontSize: '11px', borderRadius: '8px', width: 'fit-content', whiteSpace: 'nowrap', lineHeight: 1.1, margin: '0 auto' }}
+                                        >
+                                          Start Invoice
+                                        </button>
+                                      </div>
                                     )}
                                   </div>
                                 </td>
@@ -2507,6 +2574,11 @@ export default function Home() {
                           </div>
                           <div className="kanban-column-body">
                             {columnLeads.map(lead => (
+                              (() => {
+                                const hasInvoice = Boolean(lead.invoiceCount || lead.invoiceNo);
+                                const canStartInvoice = lead.status === 'Order Confirmed' && !hasInvoice;
+
+                                return (
                               <div
                                 key={lead.id}
                                 className="kanban-card"
@@ -2539,11 +2611,22 @@ export default function Home() {
                                 <div className="kanban-card-footer">
                                   <span style={{ fontSize: '10px', color: 'var(--muted)' }}>{lead.id} {lead.closurePercent ? `• ${lead.closurePercent}%` : ''}</span>
                                   <div className="act-row-tight" onClick={e => e.stopPropagation()}>
+                                    {canStartInvoice && (
+                                      <button
+                                        className="btn btn-compact"
+                                        style={{ padding: '4px 8px', background: 'var(--green)', color: 'white', borderColor: 'var(--green)' }}
+                                        onClick={() => router.push(`/enquiry/${lead.id}/invoice?new=1`)}
+                                      >
+                                        Start Invoice
+                                      </button>
+                                    )}
                                     <button className="btn btn-compact" style={{ padding: '4px 8px' }} onClick={() => router.push(`/enquiry/${lead.id}`)}>Details</button>
                                     <button className="btn btn-compact" style={{ padding: '4px 8px' }} onClick={() => startLeadEdit(lead)}>Edit</button>
                                   </div>
                                 </div>
                               </div>
+                                );
+                              })()
                             ))}
                           </div>
                         </div>
@@ -2727,6 +2810,19 @@ export default function Home() {
                 </div>
 
                 <div className="slide-over-footer">
+                  {selectedLead.status === 'Order Confirmed' && !selectedLead.invoiceCount && !selectedLead.invoiceNo && (
+                    <button
+                      className="btn primary"
+                      onClick={() => {
+                        const s = selectedLead;
+                        setSelectedLeadId(null);
+                        router.push(`/enquiry/${s.id}/invoice?new=1`);
+                      }}
+                      style={{ flex: 1, background: 'var(--green)', borderColor: 'var(--green)' }}
+                    >
+                      Start Invoice
+                    </button>
+                  )}
                   <button className="btn primary" onClick={() => { const s = selectedLead; setSelectedLeadId(null); startLeadEdit(s); }} style={{ flex: 1 }}>Edit Lead</button>
                   <button className="btn" onClick={() => setSelectedLeadId(null)} style={{ flex: 1 }}>Close</button>
                 </div>
@@ -3538,27 +3634,47 @@ export default function Home() {
                   </div>
                 )}
                 {!isBillingInvoicesLoading && billingInvoices.map((invoice) => (
-                  <div key={`${invoice.leadId}-${invoice.invoiceNo}`} className="mgmt-list-item">
+                  <div key={`${invoice.leadId}-${invoice.invoiceNo}`} className="mgmt-list-item" style={{ paddingLeft: '20px', paddingRight: '20px', gap: '18px' }}>
                     <div className="mgmt-item-icon" style={{ background: invoice.isPaid ? 'var(--green-soft)' : 'var(--blue-soft)', color: invoice.isPaid ? 'var(--green)' : 'var(--blue)' }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><path d="M1 10h22"></path></svg>
                     </div>
-                    <div className="mgmt-item-body">
+                    <div className="mgmt-item-body" style={{ paddingRight: '12px' }}>
                       <span className="mgmt-item-name">{invoice.leadName}</span>
-                      <span className="mgmt-item-meta">{invoice.invoiceNo} · {money(invoice.amount)} · {invoice.source === 'ledger' ? 'Next invoice' : 'Invoice'}</span>
-                      <span className="mgmt-item-meta">{formatDate(invoice.date)} {invoice.isPaid ? '· Paid' : '· Pending'}</span>
+                      <span className="mgmt-item-meta">{invoice.invoiceNo} · {money(invoice.amount)} · {invoice.isFullyPaid ? 'Full balance paid' : invoice.source === 'ledger' ? 'Next invoice' : 'Invoice'}</span>
+                      <span className="mgmt-item-meta" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ width: '8px', height: '8px', borderRadius: '999px', background: invoice.isPaid ? 'var(--green)' : 'var(--amber)', display: 'inline-block' }} />
+                        {formatDate(invoice.date)} {invoice.isFullyPaid ? '· Full Balance Paid' : invoice.isPaid ? '· Paid' : '· Pending'}
+                      </span>
                     </div>
-                    <div className="mgmt-item-actions">
-                      <button className="btn primary" onClick={() => router.push(`/enquiry/${invoice.leadId}/invoice${invoice.source === 'ledger' ? '?new=1' : ''}`)}>
-                        Open
-                      </button>
+                    <div className="mgmt-item-actions" style={{ gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end', paddingLeft: '12px', minWidth: 'fit-content' }}>
+                      {!invoice.isPaid && (
+                        <button className="btn primary" onClick={() => router.push(`/enquiry/${invoice.leadId}/invoice`)} style={{ minWidth: '84px', padding: '8px 12px', justifyContent: 'center' }}>
+                          Edit
+                        </button>
+                      )}
+                      {!invoice.isPaid && (
+                        <button className="btn" onClick={() => markBillingInvoicePaid(invoice)} style={{ minWidth: '96px', padding: '8px 12px', justifyContent: 'center', background: 'var(--green)', color: 'white', borderColor: 'var(--green)' }}>
+                          Mark Paid
+                        </button>
+                      )}
+                      {invoice.source === 'ledger' && invoice.isLatest && invoice.isPaid && invoice.balanceDue > 0 && !invoice.isFullyPaid && (
+                        <button className="btn" onClick={() => router.push(`/enquiry/${invoice.leadId}/invoice?new=1`)} style={{ minWidth: '112px', padding: '8px 12px', justifyContent: 'center' }}>
+                          Next Invoice
+                        </button>
+                      )}
+                      {invoice.source === 'ledger' && invoice.isLatest && invoice.isPaid && invoice.isFullyPaid && (
+                        <button className="btn" disabled style={{ minWidth: '136px', padding: '8px 12px', justifyContent: 'center', background: 'var(--green-soft)', color: 'var(--green)', borderColor: 'var(--green-soft)', cursor: 'default' }}>
+                          Full Balance Paid
+                        </button>
+                      )}
                       <button className="btn" onClick={() => {
-                        const slug = invoice.leadName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-                        window.open(`/invoice/${slug}/view`, '_blank');
-                      }}>
-                        View Portal
+                        const leadSlug = invoice.leadName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+                        const invoiceToken = invoice.invoiceNo.toLowerCase();
+                        window.open(`/invoice/${leadSlug}/${invoiceToken}/view`, '_blank');
+                      }} style={{ minWidth: '80px', padding: '8px 12px', justifyContent: 'center' }}>
+                        View
                       </button>
-                      <button className="btn" onClick={() => copyInvoiceLink(invoice.leadId)} style={{ background: 'var(--blue)', color: 'white', borderColor: 'var(--blue)' }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '6px' }}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                      <button className="btn" onClick={() => copyInvoiceLink(invoice)} style={{ background: 'var(--blue)', color: 'white', borderColor: 'var(--blue)', minWidth: '92px', padding: '8px 12px', justifyContent: 'center' }}>
                         Copy Link
                       </button>
                     </div>

@@ -3,7 +3,7 @@
   "invoices": [
     {
       "invoiceNo": "INV-0001",
-      "date": "25 April 2026",
+      "date": "29 April 2026",
       "clientName": "Future Tech Systems",
       "address": "Bangalore, Karnataka, India\nPh: +91 99887 76655\nEmail: contact@futuretech.com",
       "subject": "Invoice for Advance - React Next.js Website",
@@ -12,30 +12,52 @@
           "id": 1,
           "desc": "Advance for project React Next.js Website - as per project scope and discussion.",
           "qty": 1,
-          "rate": 250000,
-          "total": 250000
+          "rate": 100000,
+          "total": 100000
         }
       ],
-      "subtotal": 250000,
+      "subtotal": 100000,
       "discount": 0,
-      "tax": 0,
+      "tax": 18,
       "bankDetails": "A/C: 50100656771132\nIFSC: HDFC0000651\nBranch: NOIDA SEC 26\nAccount Type: SAVINGS",
-      "total": 250000,
-      "companyName": "Pixelkraft Software Solutions",
-      "companyAddress": "Pilibhit 262001 UP India",
+      "total": 118000,
+      "companyName": "Pixelkraft",
+      "companyAddress": "805 Wasil Pilibhit 262001 UP India",
       "companyEmail": "official@pixelkrafts.in",
       "companyPhone": "+917579966178",
       "companyWebsite": "www.pixelkrafts.in",
       "companyInstagram": "@pixelkrafts_in",
       "msmeNumber": "UDYAM-UP-60-0038284",
       "isPaid": true,
-      "paidAt": "27 Apr 2026, 07:53 pm",
-      "lastSaved": "2026-04-28T17:54:02.722Z",
-      "amountPaid": 250000
+      "paidAt": "29 Apr 2026, 06:14 pm",
+      "lastSaved": "2026-04-29T12:44:37.591Z",
+      "amountPaid": 100000
     },
     {
       "invoiceNo": "INV-0001-2",
-      "date": "28 April 2026",
+      "date": "29 April 2026",
+      "clientName": "Future Tech Systems",
+      "address": "",
+      "items": [
+        {
+          "id": 1,
+          "desc": "Invoice payment",
+          "qty": 1,
+          "rate": 200000,
+          "total": 200000
+        }
+      ],
+      "subtotal": 200000,
+      "discount": 0,
+      "tax": 0,
+      "total": 200000,
+      "isPaid": true,
+      "paidAt": "29 Apr 2026, 06:50 pm",
+      "amountPaid": 200000
+    },
+    {
+      "invoiceNo": "INV-0001-3",
+      "date": "29 April 2026",
       "clientName": "Future Tech Systems",
       "address": "Bangalore, Karnataka, India",
       "subject": "Invoice for React Next.js Website - Balance Due",
@@ -44,15 +66,15 @@
           "id": 1,
           "desc": "Invoice for React Next.js Website balance.",
           "qty": 1,
-          "rate": 250000,
-          "total": 250000
+          "rate": 100000,
+          "total": 100000
         }
       ],
-      "subtotal": 250000,
+      "subtotal": 100000,
       "discount": 0,
-      "tax": 0,
+      "tax": 18,
       "bankDetails": "A/C: 50100656771132\nIFSC: HDFC0000651\nBranch: NOIDA SEC 26\nAccount Type: SAVINGS",
-      "total": 250000,
+      "total": 118000,
       "companyName": "Pixelkraft",
       "companyAddress": "805 Wasil Pilibhit 262001 UP India",
       "companyEmail": "official@pixelkrafts.in",
@@ -60,49 +82,61 @@
       "companyWebsite": "www.pixelkrafts.in",
       "companyInstagram": "@pixelkrafts_in",
       "msmeNumber": "UDYAM-UP-60-0038284",
-      "isPaid": false,
-      "paidAt": "27 Apr 2026, 07:53 pm",
-      "lastSaved": "2026-04-28T17:55:01.922Z",
-      "amountPaid": 250000
+      "isPaid": true,
+      "paidAt": "29 Apr 2026, 06:51 pm",
+      "lastSaved": "2026-04-29T13:21:24.132Z",
+      "amountPaid": 100000
+    },
+    {
+      "invoiceNo": "INV-0001-4",
+      "date": "29 April 2026",
+      "clientName": "Future Tech Systems",
+      "address": "",
+      "items": [
+        {
+          "id": 1,
+          "desc": "Invoice payment",
+          "qty": 1,
+          "rate": 100000,
+          "total": 100000
+        }
+      ],
+      "subtotal": 100000,
+      "discount": 0,
+      "tax": 0,
+      "total": 100000,
+      "isPaid": true,
+      "paidAt": "29 Apr 2026, 06:51 pm",
+      "amountPaid": 100000
     }
   ],
   "totalLeadValue": 500000,
-  "totalPaidValue": 250000,
-  "balanceDue": 250000,
-  "isFullyPaid": false,
-  "updatedAt": "2026-04-28T17:55:01.939Z",
-  "lastInvoiceNo": "INV-0001-2",
+  "totalPaidValue": 500000,
+  "balanceDue": 0,
+  "isFullyPaid": true,
+  "updatedAt": "2026-04-29T13:21:40.195Z",
+  "lastInvoiceNo": "INV-0001-4",
   "currentInvoice": {
-    "invoiceNo": "INV-0001-2",
-    "date": "28 April 2026",
+    "invoiceNo": "INV-0001-4",
+    "date": "29 April 2026",
     "clientName": "Future Tech Systems",
-    "address": "Bangalore, Karnataka, India",
-    "subject": "Invoice for React Next.js Website - Balance Due",
+    "address": "",
     "items": [
       {
         "id": 1,
-        "desc": "Invoice for React Next.js Website balance.",
+        "desc": "Invoice payment",
         "qty": 1,
-        "rate": 250000,
-        "total": 250000
+        "rate": 100000,
+        "total": 100000
       }
     ],
-    "subtotal": 250000,
+    "subtotal": 100000,
     "discount": 0,
     "tax": 0,
-    "bankDetails": "A/C: 50100656771132\nIFSC: HDFC0000651\nBranch: NOIDA SEC 26\nAccount Type: SAVINGS",
-    "total": 250000,
-    "companyName": "Pixelkraft",
-    "companyAddress": "805 Wasil Pilibhit 262001 UP India",
-    "companyEmail": "official@pixelkrafts.in",
-    "companyPhone": "+917579966178",
-    "companyWebsite": "www.pixelkrafts.in",
-    "companyInstagram": "@pixelkrafts_in",
-    "msmeNumber": "UDYAM-UP-60-0038284",
-    "isPaid": false,
-    "paidAt": "27 Apr 2026, 07:53 pm",
-    "lastSaved": "2026-04-28T17:55:01.922Z",
-    "amountPaid": 250000
+    "total": 100000,
+    "isPaid": true,
+    "paidAt": "29 Apr 2026, 06:51 pm",
+    "amountPaid": 100000
   },
-  "lastSaved": "2026-04-28T17:55:01.939Z"
+  "lastSaved": "2026-04-29T13:21:40.195Z"
 }
