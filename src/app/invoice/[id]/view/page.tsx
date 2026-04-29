@@ -16,7 +16,7 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
   const visibleInvoiceToken = pathnameSegments[0] === 'invoice' && pathnameSegments[pathnameSegments.length - 1] === 'view'
     ? (pathnameSegments[2] || '')
     : '';
-  const requestedInvoiceNo = (visibleInvoiceToken || searchParams?.get('invoiceNo') || '').toUpperCase();
+  const requestedInvoiceToken = visibleInvoiceToken || searchParams?.get('invoiceToken') || searchParams?.get('invoiceNo') || '';
   const requestedInvoiceDate = searchParams?.get('invoiceDate') || '';
   const [invoice, setInvoice] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -30,18 +30,20 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
   const defaultCompanyInstagram = '@pixelkrafts_in';
   const defaultMsmeNumber = 'UDYAM-UP-60-0038284';
 
+  const normalizeToken = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         let targetId = '';
-        let targetInvoiceNo = requestedInvoiceNo;
+        let targetInvoiceToken = normalizeToken(requestedInvoiceToken);
 
         // Case 1: Standard ID (ENQ- or INV-)
         if (rawId.startsWith('ENQ-') || rawId.startsWith('INV-')) {
           const baseId = rawId.split('-').slice(0, 2).join('-');
           targetId = baseId.startsWith('INV-') ? baseId.replace('INV-', 'ENQ-') : baseId;
-          if (!targetInvoiceNo && rawId.startsWith('INV-')) {
-            targetInvoiceNo = rawId;
+          if (!targetInvoiceToken && rawId.startsWith('INV-')) {
+            targetInvoiceToken = normalizeToken(rawId);
           }
         } 
         // Case 2: Client Name Slug (e.g., shuja-rahman)
@@ -72,16 +74,21 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
           if (Array.isArray(data.invoices)) {
             const ledger = data as InvoiceLedger;
             const summary = summarizeInvoiceLedger({ expectedValue: Number(data.totalLeadValue || 0) }, ledger);
-            const selectedByNo = targetInvoiceNo
-              ? ledger.invoices.find((entry) => entry.invoiceNo === targetInvoiceNo)
+            const selectedByNo = targetInvoiceToken
+              ? ledger.invoices.find((entry) => normalizeToken(entry.invoiceNo) === targetInvoiceToken)
               : null;
             const selectedByDate = !selectedByNo && requestedInvoiceDate
               ? ledger.invoices.find((entry) => entry.date?.toLowerCase().replace(/[^a-z0-9]+/g, '-') === requestedInvoiceDate)
               : null;
-            const selectedInvoice = selectedByNo || selectedByDate || ledger.currentInvoice || ledger.invoices[ledger.invoices.length - 1] || null;
-            setInvoice(selectedInvoice
-              ? { ...normalizeInvoiceRecord(selectedInvoice), ...ledger, ...selectedInvoice, ...summary }
-              : { ...ledger, ...summary });
+            const requestedExactInvoice = Boolean(targetInvoiceToken || requestedInvoiceDate);
+            const selectedInvoice = selectedByNo || selectedByDate || (!requestedExactInvoice ? (ledger.currentInvoice || ledger.invoices[ledger.invoices.length - 1] || null) : null);
+
+            if (!selectedInvoice) {
+              setInvoice(null);
+              return;
+            }
+
+            setInvoice({ ...normalizeInvoiceRecord(selectedInvoice), ...ledger, ...selectedInvoice, ...summary });
           } else {
             setInvoice(data);
           }
@@ -123,7 +130,7 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
       }
     };
     fetchData();
-  }, [rawId, requestedInvoiceNo, requestedInvoiceDate]);
+  }, [rawId, requestedInvoiceToken, requestedInvoiceDate]);
 
   if (loading) return (
     <div className="invoice-container">

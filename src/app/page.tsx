@@ -68,6 +68,8 @@ interface BillingInvoiceRow {
   isFullyPaid: boolean;
 }
 
+const toInvoiceToken = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
 interface LeadEditDraft {
   date: string;
   clientName: string;
@@ -1386,11 +1388,30 @@ export default function Home() {
       });
       if (!res.ok) throw new Error('Failed to sync invoice');
       toast.success('Invoice generated successfully!');
-      window.open(`/invoice/${invoiceData.invoiceNo}/view`, '_blank');
+      window.open(`/invoice/${toInvoiceToken(lead.clientName)}/${toInvoiceToken(invoiceData.invoiceNo)}/view`, '_blank');
     } catch (e) {
       toast.error('Failed to generate invoice');
     } finally {
       setIsInvoiceBusy(false);
+    }
+  };
+
+  const deleteBillingInvoice = async (invoice: BillingInvoiceRow) => {
+    const confirmed = window.confirm(`Delete invoice ${invoice.invoiceNo}? This cannot be undone.`);
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch(`/api/leads/${invoice.leadId}/invoice?invoiceNo=${encodeURIComponent(invoice.invoiceNo)}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete invoice');
+
+      setBillingInvoices((current) => current.filter((row) => !(row.leadId === invoice.leadId && row.invoiceNo === invoice.invoiceNo)));
+      toast.success('Invoice deleted');
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to delete invoice');
     }
   };
 
@@ -1440,8 +1461,8 @@ export default function Home() {
   };
 
   const copyInvoiceLink = (invoice: BillingInvoiceRow) => {
-    const leadSlug = invoice.leadName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-    const invoiceToken = invoice.invoiceNo.toLowerCase();
+    const leadSlug = toInvoiceToken(invoice.leadName);
+    const invoiceToken = toInvoiceToken(invoice.invoiceNo);
     const portalUrl = `${window.location.origin}/invoice/${leadSlug}/${invoiceToken}/view`;
     navigator.clipboard.writeText(portalUrl);
     toast.success('Invoice link copied to clipboard!');
@@ -3668,11 +3689,14 @@ export default function Home() {
                         </button>
                       )}
                       <button className="btn" onClick={() => {
-                        const leadSlug = invoice.leadName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-                        const invoiceToken = invoice.invoiceNo.toLowerCase();
+                        const leadSlug = toInvoiceToken(invoice.leadName);
+                        const invoiceToken = toInvoiceToken(invoice.invoiceNo);
                         window.open(`/invoice/${leadSlug}/${invoiceToken}/view`, '_blank');
                       }} style={{ minWidth: '80px', padding: '8px 12px', justifyContent: 'center' }}>
                         View
+                      </button>
+                      <button className="btn" onClick={() => deleteBillingInvoice(invoice)} style={{ minWidth: '84px', padding: '8px 12px', justifyContent: 'center', background: '#ff3b30', color: 'white', borderColor: '#ff3b30' }}>
+                        Delete
                       </button>
                       <button className="btn" onClick={() => copyInvoiceLink(invoice)} style={{ background: 'var(--blue)', color: 'white', borderColor: 'var(--blue)', minWidth: '92px', padding: '8px 12px', justifyContent: 'center' }}>
                         Copy Link

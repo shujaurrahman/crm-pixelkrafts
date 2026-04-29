@@ -16,11 +16,11 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const invoiceMatch = pathname.match(/^\/invoice\/([^/]+)\/([^/]+)\/view$/);
+  const invoiceMatch = pathname.match(/^\/invoice\/([^/]+)\/(.+)\/view$/);
   if (invoiceMatch) {
     const rewrittenUrl = request.nextUrl.clone();
     rewrittenUrl.pathname = `/invoice/${invoiceMatch[1]}/view`;
-    rewrittenUrl.searchParams.set('invoiceNo', invoiceMatch[2].toUpperCase());
+    rewrittenUrl.searchParams.set('invoiceToken', invoiceMatch[2]);
     return NextResponse.rewrite(rewrittenUrl);
   }
 
