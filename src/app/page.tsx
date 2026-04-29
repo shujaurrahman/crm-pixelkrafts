@@ -500,8 +500,10 @@ export default function Home() {
 
                 if (Array.isArray(invoiceData.invoices)) {
                   const ledger = invoiceData as InvoiceLedger;
-                  const balanceDue = Number(ledger.balanceDue ?? 0);
-                  const isFullyPaid = Boolean(ledger.isFullyPaid || balanceDue <= 0);
+                  // Dynamically calculate based on current lead expected value
+                  const summary = summarizeInvoiceLedger({ expectedValue: lead.expectedValue }, ledger);
+                  const balanceDue = summary.balanceDue;
+                  const isFullyPaid = summary.isFullyPaid;
                   return ledger.invoices.map((entry: InvoiceRecord, index: number) => {
                     const invoice = normalizeInvoiceRecord(entry);
                     return {
@@ -521,8 +523,8 @@ export default function Home() {
                 }
 
                 const invoice = normalizeInvoiceRecord(invoiceData);
-                const balanceDue = Math.max(0, Number(lead.invoiceBalanceDue ?? lead.expectedValue ?? invoice.total ?? 0) - Number(invoice.amountPaid ?? invoice.subtotal ?? invoice.total ?? 0));
-                const isFullyPaid = Boolean(lead.isPaid || balanceDue <= 0);
+                const balanceDue = Math.max(0, Number(lead.expectedValue ?? invoice.total ?? 0) - Number(invoice.amountPaid ?? invoice.subtotal ?? invoice.total ?? 0));
+                const isFullyPaid = Boolean((lead.expectedValue || 0) > 0 && balanceDue <= 0);
                 return [{
                   leadId: lead.id,
                   leadName: lead.clientName,
@@ -2279,16 +2281,17 @@ export default function Home() {
                           const requestedNos = Number.isFinite(Number(lead.quantity)) && Number(lead.quantity) > 0
                             ? Number(lead.quantity)
                             : leadItems.length || '-';
+                          const isDynamicallyFullyPaid = (lead.invoicePaidValue || 0) >= (lead.expectedValue || 0) && (lead.expectedValue || 0) > 0;
                           return (
                             <Fragment key={lead.id}>
                               <tr key={lead.id} className="enquiry-row" onClick={() => router.push(`/enquiry/${lead.id}`)} style={{ cursor: 'pointer' }}>
-                                <td style={{ position: 'relative', paddingLeft: (lead.acceptanceSignature || lead.isPaid) ? '28px' : '16px' }}>
+                                <td style={{ position: 'relative', paddingLeft: (lead.acceptanceSignature || lead.isPaid || isDynamicallyFullyPaid) ? '28px' : '16px' }}>
                                   {lead.acceptanceSignature && (
                                     <div className="vertex-ribbon-container">
                                       <div className="vertex-ribbon signed">Signed</div>
                                     </div>
                                   )}
-                                  {lead.isPaid && (
+                                  {(lead.isPaid || isDynamicallyFullyPaid) && (
                                     <div className="vertex-ribbon-container">
                                       <div className="vertex-ribbon paid">Paid</div>
                                     </div>
@@ -2324,20 +2327,38 @@ export default function Home() {
                                 <td className="status-cell">
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center', textAlign: 'center' }}>
                                     <span className={`status status-pill ${statusClass(lead.status)}`}>{lead.status}</span>
-                                    {lead.isPaid && (
-                                      <span className="status-badge won" style={{ fontSize: '10px', padding: '2px 8px', background: 'var(--blue-soft)', color: 'var(--blue)' }}>✓ Paid</span>
-                                    )}
-                                    {lead.status === 'Order Confirmed' && !lead.invoiceCount && !lead.invoiceNo && (
-                                      <div style={{ marginTop: '2px', display: 'flex', justifyContent: 'center', width: '100%' }}>
-                                        <button
-                                          className="btn btn-compact"
-                                          onClick={(e) => { e.stopPropagation(); router.push(`/enquiry/${lead.id}/invoice?new=1`); }}
-                                          style={{ background: 'var(--green)', color: 'white', borderColor: 'var(--green)', padding: '6px 10px', fontSize: '11px', borderRadius: '8px', width: 'fit-content', whiteSpace: 'nowrap', lineHeight: 1.1, margin: '0 auto' }}
-                                        >
-                                          Start Invoice
-                                        </button>
-                                      </div>
-                                    )}
+                                    {(() => {
+                                      const hasInvoice = Boolean(lead.invoiceCount) || Boolean(lead.invoiceNo);
+                                      return (
+                                        <>
+                                          {(lead.isPaid || isDynamicallyFullyPaid) && (
+                                            <span className="status-badge won" style={{ fontSize: '10px', padding: '2px 8px', background: 'var(--blue-soft)', color: 'var(--blue)' }}>✓ Paid</span>
+                                          )}
+                                          {lead.status === 'Order Confirmed' && !hasInvoice && (
+                                            <div style={{ marginTop: '2px', display: 'flex', justifyContent: 'center', width: '100%' }}>
+                                              <button
+                                                className="btn btn-compact"
+                                                onClick={(e) => { e.stopPropagation(); router.push(`/enquiry/${lead.id}/invoice?new=1`); }}
+                                                style={{ background: 'var(--green)', color: 'white', borderColor: 'var(--green)', padding: '6px 10px', fontSize: '11px', borderRadius: '8px', width: 'fit-content', whiteSpace: 'nowrap', lineHeight: 1.1, margin: '0 auto' }}
+                                              >
+                                                Start Invoice
+                                              </button>
+                                            </div>
+                                          )}
+                                          {lead.status === 'Order Confirmed' && hasInvoice && !isDynamicallyFullyPaid && (
+                                            <div style={{ marginTop: '2px', display: 'flex', justifyContent: 'center', width: '100%' }}>
+                                              <button
+                                                className="btn btn-compact"
+                                                onClick={(e) => { e.stopPropagation(); router.push(`/enquiry/${lead.id}/invoice?new=1`); }}
+                                                style={{ background: 'var(--blue)', color: 'white', borderColor: 'var(--blue)', padding: '6px 10px', fontSize: '11px', borderRadius: '8px', width: 'fit-content', whiteSpace: 'nowrap', lineHeight: 1.1, margin: '0 auto' }}
+                                              >
+                                                Next Invoice
+                                              </button>
+                                            </div>
+                                          )}
+                                        </>
+                                      );
+                                    })()}
                                   </div>
                                 </td>
                                 <td>{lead.poNumber || '-'}</td>
@@ -2597,7 +2618,9 @@ export default function Home() {
                             {columnLeads.map(lead => (
                               (() => {
                                 const hasInvoice = Boolean(lead.invoiceCount || lead.invoiceNo);
+                                const isDynamicallyFullyPaid = (lead.invoicePaidValue || 0) >= (lead.expectedValue || 0) && (lead.expectedValue || 0) > 0;
                                 const canStartInvoice = lead.status === 'Order Confirmed' && !hasInvoice;
+                                const canNextInvoice = lead.status === 'Order Confirmed' && hasInvoice && !isDynamicallyFullyPaid;
 
                                 return (
                               <div
@@ -2613,7 +2636,7 @@ export default function Home() {
                                       <div className="vertex-ribbon signed">Signed</div>
                                     </div>
                                   )}
-                                  {lead.isPaid && (
+                                  {(lead.isPaid || isDynamicallyFullyPaid) && (
                                     <div className="vertex-ribbon-container">
                                       <div className="vertex-ribbon paid">Paid</div>
                                     </div>
@@ -2639,6 +2662,15 @@ export default function Home() {
                                         onClick={() => router.push(`/enquiry/${lead.id}/invoice?new=1`)}
                                       >
                                         Start Invoice
+                                      </button>
+                                    )}
+                                    {canNextInvoice && (
+                                      <button
+                                        className="btn btn-compact"
+                                        style={{ padding: '4px 8px', background: 'var(--blue)', color: 'white', borderColor: 'var(--blue)' }}
+                                        onClick={() => router.push(`/enquiry/${lead.id}/invoice?new=1`)}
+                                      >
+                                        Next Invoice
                                       </button>
                                     )}
                                     <button className="btn btn-compact" style={{ padding: '4px 8px' }} onClick={() => router.push(`/enquiry/${lead.id}`)}>Details</button>
@@ -2831,19 +2863,42 @@ export default function Home() {
                 </div>
 
                 <div className="slide-over-footer">
-                  {selectedLead.status === 'Order Confirmed' && !selectedLead.invoiceCount && !selectedLead.invoiceNo && (
-                    <button
-                      className="btn primary"
-                      onClick={() => {
-                        const s = selectedLead;
-                        setSelectedLeadId(null);
-                        router.push(`/enquiry/${s.id}/invoice?new=1`);
-                      }}
-                      style={{ flex: 1, background: 'var(--green)', borderColor: 'var(--green)' }}
-                    >
-                      Start Invoice
-                    </button>
-                  )}
+                  {(() => {
+                    const hasInvoice = Boolean(selectedLead.invoiceCount) || Boolean(selectedLead.invoiceNo);
+                    const isDynamicallyFullyPaid = (selectedLead.invoicePaidValue || 0) >= (selectedLead.expectedValue || 0) && (selectedLead.expectedValue || 0) > 0;
+                    
+                    if (selectedLead.status === 'Order Confirmed' && !hasInvoice) {
+                      return (
+                        <button
+                          className="btn primary"
+                          onClick={() => {
+                            const s = selectedLead;
+                            setSelectedLeadId(null);
+                            router.push(`/enquiry/${s.id}/invoice?new=1`);
+                          }}
+                          style={{ flex: 1, background: 'var(--green)', borderColor: 'var(--green)' }}
+                        >
+                          Start Invoice
+                        </button>
+                      );
+                    }
+                    if (selectedLead.status === 'Order Confirmed' && hasInvoice && !isDynamicallyFullyPaid) {
+                      return (
+                        <button
+                          className="btn primary"
+                          onClick={() => {
+                            const s = selectedLead;
+                            setSelectedLeadId(null);
+                            router.push(`/enquiry/${s.id}/invoice?new=1`);
+                          }}
+                          style={{ flex: 1, background: 'var(--blue)', borderColor: 'var(--blue)' }}
+                        >
+                          Next Invoice
+                        </button>
+                      );
+                    }
+                    return null;
+                  })()}
                   <button className="btn primary" onClick={() => { const s = selectedLead; setSelectedLeadId(null); startLeadEdit(s); }} style={{ flex: 1 }}>Edit Lead</button>
                   <button className="btn" onClick={() => setSelectedLeadId(null)} style={{ flex: 1 }}>Close</button>
                 </div>

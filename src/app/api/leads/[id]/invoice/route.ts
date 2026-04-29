@@ -124,6 +124,18 @@ export async function GET(
 
     if (Array.isArray((invoiceData as InvoiceLedger).invoices)) {
       const ledger = invoiceData as InvoiceLedger;
+      
+      // Fetch current lead to ensure totalLeadValue is up-to-date for balance calculations
+      try {
+        const leads = await readJsonBlob<Lead[]>(LEADS_BLOB_NAME, []);
+        const currentLead = leads.find((l) => l.id === id);
+        if (currentLead) {
+          ledger.totalLeadValue = Number(currentLead.expectedValue || ledger.totalLeadValue || 0);
+        }
+      } catch (e) {
+        // ignore fallback to saved
+      }
+
       const currentInvoice = ledger.currentInvoice || ledger.invoices[ledger.invoices.length - 1] || null;
       return NextResponse.json({
         ...ledger,
