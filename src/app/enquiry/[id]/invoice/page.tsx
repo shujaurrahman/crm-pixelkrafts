@@ -334,7 +334,7 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
           ) : (
             <span className="paid-badge-toolbar">PAID</span>
           )}
-          <button className="btn-view" onClick={() => window.open(`/invoice/${id}/view`, '_blank')}>
+          <button className="btn-view" onClick={() => window.open(`/invoice/${id}/view?invoiceNo=${invoiceNo}`, '_blank')}>
             View Portal
           </button>
         </div>

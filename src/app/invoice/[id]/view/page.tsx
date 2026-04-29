@@ -171,7 +171,16 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
       </div>
     </div>
   );
-  if (!invoice) return <div className="error">Invoice not found.</div>;
+  if (!invoice) return (
+    <div className="invoice-container theme-adaptive">
+      <div className="invoice-box a4-page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '50vh', textAlign: 'center', boxShadow: 'none', background: 'transparent' }}>
+        <div>
+          <h2 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '12px', color: '#1a1a1e' }}>No Invoice Found</h2>
+          <p style={{ color: '#8e8e93', fontSize: '15px' }}>You do not have any invoice raised.</p>
+        </div>
+      </div>
+    </div>
+  );
 
   const subtotal = invoice.subtotal || 0;
   const discountAmount = (subtotal * (invoice.discount || 0)) / 100;

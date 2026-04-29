@@ -1390,7 +1390,7 @@ export default function Home() {
       });
       if (!res.ok) throw new Error('Failed to sync invoice');
       toast.success('Invoice generated successfully!');
-      window.open(`/invoice/${toInvoiceToken(lead.clientName)}/${toInvoiceToken(invoiceData.invoiceNo)}/view`, '_blank');
+      window.open(`/invoice/${toInvoiceToken(lead.clientName)}/view?invoiceToken=${toInvoiceToken(invoiceData.invoiceNo)}`, '_blank');
     } catch (e) {
       toast.error('Failed to generate invoice');
     } finally {
@@ -1465,7 +1465,7 @@ export default function Home() {
   const copyInvoiceLink = (invoice: BillingInvoiceRow) => {
     const leadSlug = toInvoiceToken(invoice.leadName);
     const invoiceToken = toInvoiceToken(invoice.invoiceNo);
-    const portalUrl = `${window.location.origin}/invoice/${leadSlug}/${invoiceToken}/view`;
+    const portalUrl = `${window.location.origin}/invoice/${leadSlug}/view?invoiceToken=${invoiceToken}`;
     navigator.clipboard.writeText(portalUrl);
     toast.success('Invoice link copied to clipboard!');
   };
@@ -3550,18 +3550,78 @@ export default function Home() {
                   <h3 className="mgmt-card-title">Available Templates</h3>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '24px', padding: '24px' }}>
-                  {templates.length === 0 ? (
-                    <div style={{ gridColumn: '1 / -1', padding: '60px 20px', textAlign: 'center', background: '#f8fafc', borderRadius: '16px', border: '2px dashed #cbd5e1' }}>
+                  {/* Always show the System Default Template as a selectable card */}
+                  <div 
+                    className={`template-preview-card ${!templates.some(t => t.isActive) ? 'active' : ''}`}
+                    style={{
+                      background: 'var(--card)',
+                      border: !templates.some(t => t.isActive) ? '3px solid #2563eb' : '1px solid var(--line)',
+                      borderRadius: '12px',
+                      overflow: 'hidden',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      boxShadow: !templates.some(t => t.isActive) ? '0 10px 25px -5px rgba(37, 99, 235, 0.2)' : 'none',
+                      transform: !templates.some(t => t.isActive) ? 'scale(1.02)' : 'scale(1)',
+                      position: 'relative'
+                    }}
+                    onClick={() => selectTemplate('system-default')}
+                  >
+                    <div style={{ height: '240px', background: '#f8fafc', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', textAlign: 'center', position: 'relative' }}>
                       <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5" style={{ marginBottom: '16px' }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                      <div style={{ fontSize: '15px', fontWeight: 900, color: '#475569', marginBottom: '8px', letterSpacing: '0.5px' }}>
-                        PIXELKRAFT STANDARD A4
+                      <div style={{ fontSize: '13px', color: '#64748b', lineHeight: '1.5' }}>
+                        System Standard A4 Layout
                       </div>
-                      <div style={{ fontSize: '13px', color: '#64748b', maxWidth: '300px', margin: '0 auto', lineHeight: '1.6' }}>
-                        No custom templates uploaded. Using the system standard A4 layout. Upload your agency letterhead on the right to customize.
+                      {!templates.some(t => t.isActive) && (
+                        <div style={{
+                          position: 'absolute',
+                          top: '0', left: '0', right: '0', bottom: '0',
+                          background: 'rgba(37, 99, 235, 0.05)',
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          justifyContent: 'flex-end',
+                          padding: '12px',
+                          pointerEvents: 'none'
+                        }}>
+                          <div style={{ background: '#2563eb', color: 'white', fontSize: '11px', fontWeight: 900, padding: '4px 12px', borderRadius: '20px', boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)' }}>
+                            ACTIVE DEFAULT
+                          </div>
+                        </div>
+                      )}
+                      {templates.some(t => t.isActive) && (
+                        <div className="template-hover-overlay" style={{
+                          position: 'absolute',
+                          top: 0, left: 0, right: 0, bottom: 0,
+                          background: 'rgba(0,0,0,0.4)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          opacity: 0,
+                          transition: 'opacity 0.2s ease',
+                          pointerEvents: 'none'
+                        }}>
+                          <div style={{ background: 'white', color: 'black', padding: '8px 16px', borderRadius: '8px', fontWeight: 700, fontSize: '12px' }}>
+                            CLICK TO SELECT
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ padding: '16px', borderTop: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: !templates.some(t => t.isActive) ? '#f8fafc' : 'transparent' }}>
+                      <span style={{ fontWeight: 800, fontSize: '14px', color: !templates.some(t => t.isActive) ? '#1e3a8a' : 'inherit' }}>PIXELKRAFT STANDARD A4</span>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        {templates.some(t => t.isActive) && (
+                          <button 
+                            className="btn btn-compact"
+                            style={{ padding: '4px 8px', fontSize: '10px', background: '#2563eb', color: 'white', border: 'none' }}
+                            onClick={(e) => { e.stopPropagation(); selectTemplate('system-default'); }}
+                          >
+                            Set Active
+                          </button>
+                        )}
                       </div>
                     </div>
-                  ) : (
-                    templates.map(t => (
+                  </div>
+
+                  {templates.map(t => (
                     <div key={t.id} className={`template-preview-card ${t.isActive ? 'active' : ''}`}
                       style={{
                         background: 'var(--card)',
@@ -3640,7 +3700,7 @@ export default function Home() {
                         }
                       `}</style>
                     </div>
-                  )))}
+                  ))}
                 </div>
               </div>
 
@@ -3746,7 +3806,7 @@ export default function Home() {
                       <button className="btn" onClick={() => {
                         const leadSlug = toInvoiceToken(invoice.leadName);
                         const invoiceToken = toInvoiceToken(invoice.invoiceNo);
-                        window.open(`/invoice/${leadSlug}/${invoiceToken}/view`, '_blank');
+                        window.open(`/invoice/${leadSlug}/view?invoiceToken=${invoiceToken}`, '_blank');
                       }} style={{ minWidth: '80px', padding: '8px 12px', justifyContent: 'center' }}>
                         View
                       </button>
