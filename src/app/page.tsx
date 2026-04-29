@@ -739,14 +739,19 @@ export default function Home() {
         }
       }
 
-      const leadAge = (Date.now() - new Date(lead.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+      const leadAge = (Date.now() - new Date(lead.createdAt || lead.date).getTime()) / (1000 * 60 * 60 * 24);
       if (leadAge > 7 && lead.status !== 'Order Confirmed' && lead.status !== 'Closed Lost') {
         staleCount += 1;
       }
 
-      const monthKey = new Date(lead.createdAt).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+      const monthKey = new Date(lead.createdAt || lead.date).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
       monthMap[monthKey] = (monthMap[monthKey] || 0) + 1;
     });
+
+    const confirmedLeads = leads.filter(l => l.status === 'Order Confirmed');
+    const totalConfirmedValue = confirmedLeads.reduce((acc, l) => acc + l.expectedValue, 0);
+    // User wants "Pending" to show the remaining balance of confirmed leads
+    const confirmedPendingAmount = Math.max(0, totalConfirmedValue - receivedAmount);
 
     const openLeads = leads.filter((x) => x.status !== 'Order Confirmed' && x.status !== 'Closed Lost').length;
     const wonLeadsList = leads.filter((x) => x.status === 'Order Confirmed');
@@ -801,7 +806,8 @@ export default function Home() {
       trend,
       recent: [...leads].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)).slice(0, 6),
       receivedAmount,
-      pendingAmount,
+      pendingAmount: confirmedPendingAmount, // Using the logic: Total Confirmed Value - Received
+      unpaidInvoicesAmount: pendingAmount, // Original pendingAmount (sum of unpaid invoices)
       openInvoicesCount,
       paidInvoicesCount,
       billingInvoicesCount: billingInvoices.length,
@@ -2028,6 +2034,7 @@ export default function Home() {
                   ['Won Value', money(analytics.wonValue)],
                   ['Open Pipeline', money(analytics.openValue)],
                   ['Invoiced Total', money(analytics.totalInvoiced)],
+                  ['Unpaid Invoices', money(analytics.unpaidInvoicesAmount)],
                   ['Stale > 7 Days', String(analytics.staleCount)],
                 ].map(([label, value]) => (
                   <article className="card stat-card" key={label} style={{
@@ -2057,8 +2064,12 @@ export default function Home() {
                     <strong style={{ color: 'var(--green)' }}>{money(analytics.receivedAmount)}</strong>
                   </div>
                   <div className="line-item">
-                    <span>Pending Payment</span>
+                    <span>Pending Payment (Total)</span>
                     <strong style={{ color: 'var(--danger)' }}>{money(analytics.pendingAmount)}</strong>
+                  </div>
+                  <div className="line-item">
+                    <span>Unpaid Invoices (Raised)</span>
+                    <strong style={{ color: 'var(--amber)' }}>{money(analytics.unpaidInvoicesAmount)}</strong>
                   </div>
                   <div className="line-item">
                     <span>Collection Rate</span>
@@ -2112,7 +2123,68 @@ export default function Home() {
                 </article>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px', marginTop: '20px' }}>
+              {/* Open Invoices Section */}
+              <div style={{ marginTop: '24px' }}>
+                <article className="card panel" style={{ border: '1px solid var(--danger-soft)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                      Open / Unpaid Invoices
+                    </h3>
+                    <div className="meta-pill" style={{ background: 'var(--danger-soft)', color: 'var(--danger)', borderColor: 'var(--danger)', fontWeight: 800 }}>
+                      {analytics.openInvoicesCount} Invoices • {money(analytics.unpaidInvoicesAmount)}
+                    </div>
+                  </div>
+                  
+                  {billingInvoices.filter(inv => !inv.isPaid).length === 0 ? (
+                    <div style={{ padding: '32px', textAlign: 'center', color: 'var(--muted)', fontSize: '14px' }}>
+                      No open invoices at the moment. All caught up!
+                    </div>
+                  ) : (
+                    <div className="table-wrap" style={{ maxHeight: '350px', overflowY: 'auto', border: '1px solid var(--line)', borderRadius: '8px' }}>
+                      <table className="lead-table" style={{ margin: 0 }}>
+                        <thead style={{ position: 'sticky', top: 0, zIndex: 1, background: 'var(--card)' }}>
+                          <tr>
+                            <th>Invoice No</th>
+                            <th>Client / Lead</th>
+                            <th>Date</th>
+                            <th>Amount</th>
+                            <th>Balance Due</th>
+                            <th style={{ textAlign: 'right' }}>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {billingInvoices
+                            .filter(inv => !inv.isPaid)
+                            .sort((a, b) => +new Date(b.date) - +new Date(a.date))
+                            .map((inv) => (
+                              <tr key={`${inv.leadId}-${inv.invoiceNo}`}>
+                                <td style={{ fontWeight: 600 }}>{inv.invoiceNo}</td>
+                                <td>{inv.leadName}</td>
+                                <td>{formatDate(inv.date)}</td>
+                                <td>{money(inv.amount)}</td>
+                                <td style={{ color: 'var(--danger)', fontWeight: 700 }}>{money(inv.balanceDue)}</td>
+                                <td style={{ textAlign: 'right' }}>
+                                  <button 
+                                    className="btn btn-secondary btn-sm"
+                                    onClick={() => {
+                                      setSelectedLeadId(inv.leadId);
+                                      setTab('invoices');
+                                    }}
+                                  >
+                                    View
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </article>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px', marginTop: '24px' }}>
                 <article className="card" style={{ padding: 0, overflow: 'hidden' }}>
                   <div className="header" style={{ padding: '16px 20px', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <h3 style={{ margin: 0, fontSize: '15px' }}>Recent Invoices</h3>
