@@ -14,7 +14,8 @@ const DEFAULT_TEMPLATES: Template[] = [];
 
 export async function GET() {
   try {
-    const templates = await readJsonBlob<Template[]>(TEMPLATES_BLOB_NAME, DEFAULT_TEMPLATES);
+    let templates = await readJsonBlob<Template[]>(TEMPLATES_BLOB_NAME, DEFAULT_TEMPLATES);
+    templates = templates.filter(t => t.id !== 'default');
     return NextResponse.json({ templates });
   } catch (error) {
     return NextResponse.json({ error: 'Failed to load templates' }, { status: 500 });
@@ -26,6 +27,7 @@ export async function POST(request: Request) {
     const { action, template, id } = await request.json();
 
     let templates = await readJsonBlob<Template[]>(TEMPLATES_BLOB_NAME, DEFAULT_TEMPLATES);
+    templates = templates.filter(t => t.id !== 'default');
 
     if (action === 'add') {
       // Deactivate all existing templates so the new one can be the default

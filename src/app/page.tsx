@@ -257,7 +257,6 @@ export default function Home() {
   const deleteTemplate = async (id: string) => {
     const t = templates.find(x => x.id === id);
     if (t?.isActive) return toast.error('Cannot delete the active letterhead.');
-    if (id === 'default') return toast.error('Cannot delete the standard system template.');
 
     if (!window.confirm('Are you sure you want to delete this letterhead?')) return;
 
@@ -693,6 +692,21 @@ export default function Home() {
     let quoteSentValue = 0;
     let staleCount = 0;
 
+    let receivedAmount = 0;
+    let pendingAmount = 0;
+    let openInvoicesCount = 0;
+    let paidInvoicesCount = 0;
+
+    billingInvoices.forEach(inv => {
+      if (inv.isPaid) {
+        receivedAmount += inv.amount;
+        paidInvoicesCount++;
+      } else {
+        pendingAmount += inv.amount;
+        openInvoicesCount++;
+      }
+    });
+
     const monthMap: Record<string, number> = {};
 
     leads.forEach((lead) => {
@@ -770,8 +784,14 @@ export default function Home() {
       ownerBoard,
       trend,
       recent: [...leads].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)).slice(0, 6),
+      receivedAmount,
+      pendingAmount,
+      openInvoicesCount,
+      paidInvoicesCount,
+      billingInvoicesCount: billingInvoices.length,
+      totalInvoiced: receivedAmount + pendingAmount,
     };
-  }, [leads]);
+  }, [leads, billingInvoices]);
 
   const syncLeads = async (nextLeads: Lead[]) => {
     setSyncingStatus(true);
@@ -1983,88 +2003,136 @@ export default function Home() {
                 {[
                   ['Total Leads', String(analytics.totalLeads)],
                   ['Open Leads', String(analytics.openLeads)],
-                  ['Open Pipeline', money(analytics.openValue)],
+                  ['Total Received', money(analytics.receivedAmount)],
+                  ['Pending Payment', money(analytics.pendingAmount)],
                   ['Conversion Rate', `${analytics.conversionRate.toFixed(1)}%`],
                   ['Won Value', money(analytics.wonValue)],
-                  ['Avg Deal Size', money(analytics.avgDeal)],
-                  ['Avg Open Deal', money(analytics.avgOpenDeal)],
+                  ['Open Pipeline', money(analytics.openValue)],
+                  ['Invoiced Total', money(analytics.totalInvoiced)],
                   ['Stale > 7 Days', String(analytics.staleCount)],
-                  ['Quote Sent Value', money(analytics.quoteSentValue)],
                 ].map(([label, value]) => (
-                  <article className="card stat-card" key={label}>
-                    <span>{label}</span>
-                    <strong>{value}</strong>
+                  <article className="card stat-card" key={label} style={{
+                    background: label === 'Total Received' ? 'rgba(34, 197, 94, 0.05)' : 
+                               label === 'Pending Payment' ? 'rgba(239, 68, 68, 0.05)' : 'var(--card)'
+                  }}>
+                    <span style={{ color: label === 'Total Received' ? 'var(--green)' : 
+                                       label === 'Pending Payment' ? 'var(--danger)' : 'var(--muted)' }}>
+                      {label}
+                    </span>
+                    <strong style={{ color: label === 'Total Received' ? 'var(--green)' : 
+                                         label === 'Pending Payment' ? 'var(--danger)' : 'var(--text)' }}>
+                      {value}
+                    </strong>
                   </article>
                 ))}
               </div>
 
-              <div className="three-col metric-ribbon" style={{ marginTop: '18px' }}>
+              <div className="three-col metric-ribbon" style={{ marginTop: '24px' }}>
                 <article className="card panel">
-                  <h3>Pipeline Health</h3>
+                  <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    Financial Health
+                  </h3>
                   <div className="line-item">
-                    <span>Open Share</span>
-                    <strong>{analytics.openPipelineShare.toFixed(1)}%</strong>
+                    <span>Total Received</span>
+                    <strong style={{ color: 'var(--green)' }}>{money(analytics.receivedAmount)}</strong>
                   </div>
                   <div className="line-item">
-                    <span>Open Value</span>
-                    <strong>{money(analytics.openValue)}</strong>
+                    <span>Pending Payment</span>
+                    <strong style={{ color: 'var(--danger)' }}>{money(analytics.pendingAmount)}</strong>
                   </div>
                   <div className="line-item">
-                    <span>Quoted Value</span>
-                    <strong>{money(analytics.quoteSentValue)}</strong>
+                    <span>Collection Rate</span>
+                    <strong>{analytics.totalInvoiced ? ((analytics.receivedAmount / analytics.totalInvoiced) * 100).toFixed(1) : 0}%</strong>
+                  </div>
+                  <div className="line-item">
+                    <span>Total Invoiced</span>
+                    <strong>{money(analytics.totalInvoiced)}</strong>
                   </div>
                 </article>
+
                 <article className="card panel">
-                  <h3>Lead Momentum</h3>
+                  <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    Invoice Activity
+                  </h3>
                   <div className="line-item">
-                    <span>Open Leads</span>
-                    <strong>{analytics.openLeads}</strong>
+                    <span>Paid Invoices</span>
+                    <strong>{analytics.paidInvoicesCount}</strong>
                   </div>
                   <div className="line-item">
-                    <span>Won Leads</span>
-                    <strong>{analytics.byStatus['Order Confirmed'] || 0}</strong>
+                    <span>Open Invoices</span>
+                    <strong style={{ color: 'var(--amber)' }}>{analytics.openInvoicesCount}</strong>
                   </div>
                   <div className="line-item">
-                    <span>Stale Leads</span>
-                    <strong>{analytics.staleCount}</strong>
+                    <span>Total Invoices</span>
+                    <strong>{analytics.billingInvoicesCount}</strong>
+                  </div>
+                  <div className="line-item">
+                    <span>Avg Invoice Value</span>
+                    <strong>{money(analytics.billingInvoicesCount ? analytics.totalInvoiced / analytics.billingInvoicesCount : 0)}</strong>
                   </div>
                 </article>
+
                 <article className="card panel">
-                  <h3>Revenue Signal</h3>
-                  <div className="line-item">
-                    <span>Total Pipeline</span>
-                    <strong>{money(analytics.totalValue)}</strong>
-                  </div>
-                  <div className="line-item">
-                    <span>Won Value</span>
-                    <strong>{money(analytics.wonValue)}</strong>
-                  </div>
-                  <div className="line-item">
-                    <span>Average Deal</span>
-                    <strong>{money(analytics.avgDeal)}</strong>
+                  <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    Top Performers
+                  </h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {analytics.ownerBoard.slice(0, 3).map((o, idx) => (
+                      <div key={o.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '11px', background: 'var(--line)', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>#{idx + 1}</span>
+                          <span style={{ fontSize: '13px', fontWeight: 600 }}>{o.name}</span>
+                        </div>
+                        <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--blue)' }}>{money(o.value)}</span>
+                      </div>
+                    ))}
                   </div>
                 </article>
               </div>
 
-              <div className="three-col metric-ribbon">
-                <article className="card panel">
-                  <h3>Priority Mix</h3>
-                  {(['High', 'Medium', 'Low'] as Priority[]).map((level) => (
-                    <div className="line-item" key={level}>
-                      <span>{level}</span>
-                      <strong>{analytics.byPriority[level] || 0}</strong>
-                    </div>
-                  ))}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px', marginTop: '20px' }}>
+                <article className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                  <div className="header" style={{ padding: '16px 20px', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h3 style={{ margin: 0, fontSize: '15px' }}>Recent Invoices</h3>
+                    <button className="btn btn-compact" onClick={() => setTab('invoices')}>View All</button>
+                  </div>
+                  <div className="mgmt-list" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                    {billingInvoices.slice(0, 10).map((inv) => (
+                      <div key={`${inv.leadId}-${inv.invoiceNo}`} className="mgmt-list-item" style={{ padding: '12px 20px' }}>
+                        <div className="mgmt-item-icon" style={{ 
+                          background: inv.isPaid ? 'rgba(34, 197, 94, 0.1)' : 'rgba(37, 99, 235, 0.1)', 
+                          color: inv.isPaid ? 'var(--green)' : 'var(--blue)' 
+                        }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><path d="M1 10h22"></path></svg>
+                        </div>
+                        <div className="mgmt-item-body">
+                          <span className="mgmt-item-name">{inv.leadName}</span>
+                          <span className="mgmt-item-meta">{inv.invoiceNo} • {formatDate(inv.date)}</span>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontWeight: 800, fontSize: '14px' }}>{money(inv.amount)}</div>
+                          <div style={{ 
+                            fontSize: '10px', 
+                            fontWeight: 900, 
+                            color: inv.isPaid ? 'var(--green)' : 'var(--amber)',
+                            textTransform: 'uppercase'
+                          }}>
+                            {inv.isPaid ? 'Paid' : 'Pending'}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {!billingInvoices.length && (
+                      <div style={{ padding: '40px', textAlign: 'center', color: 'var(--muted)' }}>No invoices found.</div>
+                    )}
+                  </div>
                 </article>
-                <article className="card panel">
-                  <h3>Status Funnel</h3>
-                  {STATUSES.map((status) => (
-                    <div className="line-item" key={status}>
-                      <span>{status}</span>
-                      <strong>{analytics.byStatus[status] || 0}</strong>
-                    </div>
-                  ))}
-                </article>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
                 <article className="card panel">
                   <div className="header" style={{ padding: 0, border: 'none', background: 'transparent', height: 'auto', marginBottom: '16px' }}>
                     <h3 style={{ margin: 0 }}>Monthly Trend</h3>
@@ -2110,9 +2178,36 @@ export default function Home() {
                     )}
                   </div>
                 </article>
+
+                <article className="card panel">
+                  <h3>Lead Status Mix</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {STATUSES.map(status => {
+                      const count = analytics.byStatus[status] || 0;
+                      const percentage = analytics.totalLeads ? (count / analytics.totalLeads) * 100 : 0;
+                      return (
+                        <div key={status}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
+                            <span>{status}</span>
+                            <span style={{ fontWeight: 700 }}>{count}</span>
+                          </div>
+                          <div style={{ height: '6px', background: 'var(--line)', borderRadius: '3px', overflow: 'hidden' }}>
+                            <div style={{ 
+                              height: '100%', 
+                              width: `${percentage}%`, 
+                              background: status === 'Order Confirmed' ? 'var(--green)' : 
+                                         status === 'Closed Lost' ? 'var(--danger)' : 
+                                         status === 'Quote Sent' ? 'var(--blue)' : 'var(--muted)'
+                            }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </article>
               </div>
 
-              <div className="two-col">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
                 <article className="card panel">
                   <h3>Brand Distribution</h3>
                   {Object.entries(analytics.byBrand).map(([brand, count]) => {
@@ -2127,7 +2222,7 @@ export default function Home() {
                       </div>
                     );
                   })}
-                  <h3 className="subheading">Top Products</h3>
+                  <h3 className="subheading" style={{ marginTop: '20px' }}>Top Products</h3>
                   {analytics.topProducts.map(([name, count]) => (
                     <div className="line-item" key={name}>
                       <span>{name}</span>
@@ -2137,51 +2232,26 @@ export default function Home() {
                 </article>
 
                 <article className="card panel">
-                  <h3>Owner Performance</h3>
-                  {analytics.ownerBoard.map((owner) => (
-                    <div className="leader-item" key={owner.name}>
-                      <div>
-                        <div className="leader-name">{owner.name}</div>
-                        <small>
-                          {owner.leads} leads | Win rate {owner.winRate.toFixed(0)}%
-                        </small>
-                      </div>
-                      <strong>{money(owner.value)}</strong>
-                    </div>
-                  ))}
-                </article>
-              </div>
-
-              <div className="two-col stretch">
-                <article className="card panel">
                   <h3>AI Analytics Chat</h3>
+                  <p style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '16px' }}>
+                    Ask about sales performance, risks, or priorities.
+                  </p>
                   <div className="toolbar compact">
                     <input
                       className="field"
                       value={chatQuestion}
                       onChange={(e) => setChatQuestion(e.target.value)}
-                      placeholder="Ask: which region is slow, owner with biggest risk, what to prioritize this week"
+                      placeholder="e.g. Which region is slow?"
                     />
                     <button className="btn primary" onClick={askAI} disabled={chatBusy}>
                       {chatBusy ? 'Thinking...' : 'Ask AI'}
                     </button>
                   </div>
-                  <div className="answer-box">{chatAnswer}</div>
-                </article>
-
-                <article className="card panel">
-                  <h3>Recent Enquires</h3>
-                  {analytics.recent.map((lead) => (
-                    <div className="line-item" key={lead.id}>
-                      <div>
-                        <div>{lead.clientName}</div>
-                        <small>
-                          {lead.brand} | {lead.productName || 'No product yet'} | {relativeTime(lead.createdAt)}
-                        </small>
-                      </div>
-                      <span className={`status ${statusClass(lead.status)}`}>{lead.status}</span>
+                  {chatAnswer && (
+                    <div className="answer-box" style={{ marginTop: '16px', padding: '16px', background: 'var(--paper-hover)', borderRadius: '8px', fontSize: '13px', lineHeight: '1.5' }}>
+                      {chatAnswer}
                     </div>
-                  ))}
+                  )}
                 </article>
               </div>
             </section>
@@ -3683,7 +3753,7 @@ export default function Home() {
                               Set Active
                             </button>
                           )}
-                          {!t.isActive && t.id !== 'default' && (
+                          {!t.isActive && (
                             <button
                               onClick={(e) => { e.stopPropagation(); deleteTemplate(t.id); }}
                               style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
