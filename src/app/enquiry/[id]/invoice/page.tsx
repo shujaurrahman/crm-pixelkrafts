@@ -20,15 +20,15 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
   const id = resolvedParams?.id || (fallbackParams?.id as string) || '';
   const router = useRouter();
   const isNewInvoiceDraft = searchParams.get('new') === '1';
+  // Which specific invoice to edit (1-based index); if absent, loads the latest
+  const editInvoiceIndex = searchParams.get('invoiceIndex') ? parseInt(searchParams.get('invoiceIndex')!, 10) : null;
 
   const [lead, setLead] = useState<Lead | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  const generateClientSlug = (leadName: string, leadId: string) => {
-    const nameSlug = (leadName || 'client').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-    const idSuffix = leadId.split('-')[1] || leadId;
-    return `${nameSlug}-${idSuffix}`;
+  const generateClientSlug = (leadName: string) => {
+    return (leadName || 'client').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
   };
   const toInvoiceToken = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
@@ -76,9 +76,22 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
             : invData.invoiceNo
               ? [normalizeInvoiceRecord(invData)]
               : [];
-          const latestInvoice = invData.currentInvoice
+
+          // Pick the specific invoice to edit:
+          // - ?invoiceIndex=N → pick by 1-based position
+          // - otherwise → pick the latest (currentInvoice or last in array)
+          let targetInvoice = invData.currentInvoice
             ? normalizeInvoiceRecord(invData.currentInvoice)
             : ledgerInvoices[ledgerInvoices.length - 1] || null;
+
+          if (editInvoiceIndex !== null && ledgerInvoices.length > 0) {
+            const idx = editInvoiceIndex - 1; // convert to 0-based
+            if (idx >= 0 && idx < ledgerInvoices.length) {
+              targetInvoice = ledgerInvoices[idx];
+            }
+          }
+
+          const latestInvoice = targetInvoice;
           const summary = summarizeInvoiceLedger(
             { expectedValue: Number(found?.expectedValue || invData.totalLeadValue || 0) },
             Array.isArray(invData.invoices)
@@ -344,9 +357,15 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
             <span className="paid-badge-toolbar">PAID</span>
           )}
           <button className="btn-view" onClick={() => {
-            const clientSlug = generateClientSlug(clientName, id);
-            const invoiceToken = toInvoiceToken(invoiceNo);
-            window.open(`/invoice/${clientSlug}/${invoiceToken}/view`, '_blank');
+            const clientSlug = generateClientSlug(clientName);
+            // If editing a specific invoice by index, use that; otherwise use invoiceCount position
+            const pos = editInvoiceIndex !== null
+              ? editInvoiceIndex
+              : isNewInvoiceDraft
+                ? invoiceCount + 1
+                : Math.max(invoiceCount, 1);
+            const invoiceUrlNo = String(pos).padStart(2, '0');
+            window.open(`/invoice/${clientSlug}/${invoiceUrlNo}/view`, '_blank');
           }}>
             View Portal
           </button>

@@ -58,6 +58,7 @@ interface BillingInvoiceRow {
   leadId: string;
   leadName: string;
   invoiceNo: string;
+  invoiceIndex: number; // 1-based position in the ledger (used for clean URL like /01 /02)
   date: string;
   amount: number;
   isPaid: boolean;
@@ -537,6 +538,7 @@ export default function Home() {
                       isPaid: Boolean(invoice.isPaid),
                       paidAt: invoice.paidAt,
                       source: 'ledger' as const,
+                      invoiceIndex: index + 1,
                       isLatest: index === ledger.invoices.length - 1,
                       balanceDue,
                       isFullyPaid,
@@ -553,6 +555,7 @@ export default function Home() {
                   invoiceNo: invoice.invoiceNo || lead.id.replace('ENQ-', 'INV-'),
                   date: invoice.date || lead.date,
                   amount: Number(invoice.amountPaid ?? invoice.subtotal ?? invoice.total ?? 0),
+                  invoiceIndex: 1,
                   isPaid: Boolean(invoice.isPaid),
                   paidAt: invoice.paidAt,
                   source: 'new' as const,
@@ -1533,7 +1536,7 @@ export default function Home() {
 
   const copyInvoiceLink = (invoice: BillingInvoiceRow) => {
     const clientSlug = generateClientSlug(invoice.leadName);
-    const invoiceUrlNo = getInvoiceUrlNo(invoice.invoiceNo);
+    const invoiceUrlNo = String(invoice.invoiceIndex).padStart(2, '0');
     const portalUrl = `${window.location.origin}/invoice/${clientSlug}/${invoiceUrlNo}/view`;
     navigator.clipboard.writeText(portalUrl);
     toast.success('Invoice link copied to clipboard!');
@@ -2193,7 +2196,7 @@ export default function Home() {
                                     className="btn btn-secondary btn-sm"
                                     onClick={() => {
                                       const clientSlug = generateClientSlug(inv.leadName);
-                                      const invoiceUrlNo = getInvoiceUrlNo(inv.invoiceNo);
+                                      const invoiceUrlNo = String(inv.invoiceIndex).padStart(2, '0');
                                       window.open(`/invoice/${clientSlug}/${invoiceUrlNo}/view`, '_blank');
                                     }}
                                   >
@@ -4019,7 +4022,7 @@ export default function Home() {
                     </div>
                     <div className="mgmt-item-actions" style={{ gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end', paddingLeft: '12px', minWidth: 'fit-content' }}>
                       {!invoice.isPaid && (
-                        <button className="btn primary" onClick={() => router.push(`/enquiry/${invoice.leadId}/invoice`)} style={{ minWidth: '84px', padding: '8px 12px', justifyContent: 'center' }}>
+                        <button className="btn primary" onClick={() => router.push(`/enquiry/${invoice.leadId}/invoice?invoiceIndex=${invoice.invoiceIndex}`)} style={{ minWidth: '84px', padding: '8px 12px', justifyContent: 'center' }}>
                           Edit
                         </button>
                       )}
@@ -4040,7 +4043,7 @@ export default function Home() {
                       )}
                       <button className="btn" onClick={() => {
                         const clientSlug = generateClientSlug(invoice.leadName);
-                        const invoiceUrlNo = getInvoiceUrlNo(invoice.invoiceNo);
+                        const invoiceUrlNo = String(invoice.invoiceIndex).padStart(2, '0');
                         window.open(`/invoice/${clientSlug}/${invoiceUrlNo}/view`, '_blank');
                       }} style={{ minWidth: '80px', padding: '8px 12px', justifyContent: 'center' }}>
                         View

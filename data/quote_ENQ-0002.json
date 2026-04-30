@@ -1,0 +1,64 @@
+{
+  "quoteNo": "EQ-0002-2026",
+  "quoteDate": "30 April 2026",
+  "validUntil": "30 Days from date of quotation",
+  "toAddress": "Test Client\n \nPh: \nEmail: test@test.com",
+  "subject": "Quotation for Pixelkraft Software Solutions - Test Client",
+  "notes": "Note: Project timelines are subject to timely asset delivery.",
+  "items": [
+    {
+      "id": 1,
+      "desc": "[Product Name & Model]\n[Enter technical specifications and mounting type here.]",
+      "uom": "Nos.",
+      "qty": 1,
+      "rate": 0
+    },
+    {
+      "id": 2,
+      "desc": "[Accessory Name]\n[Enter accessory details and finish here.]",
+      "uom": "Nos.",
+      "qty": 1,
+      "rate": 0
+    }
+  ],
+  "discountRate": 0,
+  "gstRate": 18,
+  "sections": [
+    {
+      "title": "PROJECT TECHNICAL STACK",
+      "items": [
+        "Frontend: React.js / Next.js / TypeScript",
+        "Backend: Node.js / PostgreSQL / REST API",
+        "Infrastructure: AWS Cloud / Vercel / Docker",
+        "Testing: Jest / Cypress / Unit Testing"
+      ]
+    },
+    {
+      "title": "SCOPE OF WORK",
+      "items": [
+        "Design and Development of digital assets as per approved brief",
+        "SEO Optimization and technical setup",
+        "Social Media Management and content calendar execution",
+        "Monthly performance reporting and strategy refinement"
+      ]
+    },
+    {
+      "title": "TERMS & CONDITIONS",
+      "items": [
+        "Payment: 50% Advance / 50% on Completion",
+        "Delivery: Timeline subject to project milestone approval",
+        "Validity: 30 Days from the date of this quotation",
+        "Support: 3 Months technical support post-launch"
+      ]
+    }
+  ],
+  "companySignatory": "Authorized Signatory",
+  "companyName": "Pixelkraft Software Solutions",
+  "clientSignatory": "Accepted By (Client)",
+  "clientStamp": "Signature & Stamp",
+  "subtotal": 0,
+  "discountAmount": 0,
+  "gstAmount": 0,
+  "amountInWords": "Zero Rupees Only",
+  "grandTotal": 0
+}

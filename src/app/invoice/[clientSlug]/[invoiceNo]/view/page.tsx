@@ -4,7 +4,6 @@ import { useEffect, useState, use } from 'react';
 import { useParams } from 'next/navigation';
 import { toast, Toaster } from 'sonner';
 import { numberToWords } from '@/lib/number-to-words';
-import { normalizeInvoiceRecord, summarizeInvoiceLedger, type InvoiceLedger } from '@/lib/invoice-utils';
 
 export default function InvoicePortal({ params: rawParams }: { params: Promise<{ clientSlug: string; invoiceNo: string }> }) {
   const resolvedParams = use(rawParams);
@@ -13,7 +12,9 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
   const invoiceNoParam = resolvedParams?.invoiceNo || (fallbackParams?.invoiceNo as string) || '';
 
   const [invoice, setInvoice] = useState<any>(null);
+  const [summary, setSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState('');
 
   const defaultCompanyName = 'Pixelkraft Software Solutions';
   const defaultCompanyAddress = '805 Wasil Pilibhit 262001 UP India';
@@ -24,87 +25,35 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
   const defaultMsmeNumber = 'UDYAM-UP-60-0038284';
 
   useEffect(() => {
-    const fetchData = async () => {
+    if (!clientSlug) return;
+
+    const fetchInvoice = async () => {
+      setLoading(true);
+      setErrorMsg('');
       try {
-        // Step 1: Fetch all leads to find the matching one by clientSlug
-        const leadsRes = await fetch('/api/leads', { cache: 'no-store' });
-        const leadsData = await leadsRes.json();
-        const leads: any[] = leadsData.leads || [];
-
-        // The clientSlug is just the client name lowercased+slugified
-        // We match against all leads and pick the best match
-        let targetLead: any = null;
-        let bestScore = -1;
-
-        for (const lead of leads) {
-          const slug = (lead.clientName || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-          if (slug === clientSlug) {
-            // Exact match — prefer leads that have invoices
-            const score = (lead.invoiceCount || 0) + (lead.invoiceNo ? 1 : 0);
-            if (score > bestScore) {
-              bestScore = score;
-              targetLead = lead;
-            }
-          }
-        }
-
-        if (!targetLead) {
-          setLoading(false);
-          return;
-        }
-
-        // Step 2: Fetch the invoice ledger for this lead
-        const res = await fetch(`/api/leads/${targetLead.id}/invoice?t=${Date.now()}`, { cache: 'no-store' });
+        const res = await fetch(
+          `/api/invoice-portal?clientSlug=${encodeURIComponent(clientSlug)}&invoiceNo=${encodeURIComponent(invoiceNoParam)}`,
+          { cache: 'no-store' }
+        );
         const data = await res.json();
 
-        if (data.error || !data) {
-          setLoading(false);
-          return;
-        }
-
-        // Step 3: Find the specific invoice by the clean 2-digit number in the URL
-        // invoiceNoParam is like '01', '02', or legacy like 'inv-0002'
-        let selectedInvoice: any = null;
-
-        if (Array.isArray(data.invoices) && data.invoices.length > 0) {
-          const ledger = data as InvoiceLedger;
-
-          // Try matching by clean 2-digit index (01 = first, 02 = second, etc.)
-          const numericTarget = parseInt(invoiceNoParam, 10);
-          if (!isNaN(numericTarget) && numericTarget >= 1 && numericTarget <= ledger.invoices.length) {
-            selectedInvoice = ledger.invoices[numericTarget - 1];
-          }
-
-          // Fallback: match by normalized invoiceNo field
-          if (!selectedInvoice) {
-            const normalizedParam = invoiceNoParam.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-            selectedInvoice = ledger.invoices.find((entry: any) => {
-              const entryNorm = (entry.invoiceNo || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-              return entryNorm === normalizedParam;
-            });
-          }
-
-          // Final fallback: show the latest invoice
-          if (!selectedInvoice) {
-            selectedInvoice = ledger.currentInvoice || ledger.invoices[ledger.invoices.length - 1];
-          }
-
-          if (selectedInvoice) {
-            const summary = summarizeInvoiceLedger({ expectedValue: Number(data.totalLeadValue || targetLead.expectedValue || 0) }, ledger);
-            setInvoice({ ...normalizeInvoiceRecord(selectedInvoice), ...summary, invoices: ledger.invoices, totalLeadValue: data.totalLeadValue || targetLead.expectedValue });
-          }
-        } else if (!data.error) {
-          // Single invoice format (legacy)
-          setInvoice(normalizeInvoiceRecord(data));
+        if (!res.ok || data.error) {
+          setErrorMsg(data.error || 'Invoice not found');
+          setInvoice(null);
+        } else {
+          setInvoice(data.invoice);
+          setSummary(data.summary);
         }
       } catch (e) {
         console.error('Failed to load invoice', e);
         toast.error('Failed to load invoice.');
+        setErrorMsg('Network error loading invoice.');
       } finally {
         setLoading(false);
       }
     };
-    fetchData();
+
+    fetchInvoice();
   }, [clientSlug, invoiceNoParam]);
 
   if (loading) return (
@@ -131,8 +80,30 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
           <div className="sk-row header"></div>
           <div className="sk-row"></div>
           <div className="sk-row"></div>
+          <div className="sk-row"></div>
         </div>
       </div>
+      <style jsx global>{`
+        body { margin: 0; font-family: 'Inter', system-ui, sans-serif; background: #f9f9fb; }
+        .invoice-container { display: flex; flex-direction: column; align-items: center; padding: 60px 20px; min-height: 100vh; background: #f9f9fb; }
+        .a4-page { width: 210mm; min-height: 297mm; background: white; padding: 15mm; box-shadow: 0 40px 100px rgba(0,0,0,0.06); border-radius: 8px; display: flex; flex-direction: column; }
+        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+        .sk-line, .sk-row { background: #f1f1f4; animation: pulse 1.5s ease-in-out infinite; border-radius: 4px; }
+        .skeleton-page { padding: 40px !important; }
+        .skeleton-header { display: flex; justify-content: space-between; margin-bottom: 60px; }
+        .skeleton-branding .title { width: 200px; height: 24px; margin-bottom: 12px; }
+        .skeleton-branding .sub { width: 140px; height: 12px; margin-bottom: 8px; }
+        .skeleton-meta .title { width: 120px; height: 28px; margin-bottom: 12px; margin-left: auto; }
+        .skeleton-meta .item { width: 160px; height: 14px; margin-bottom: 8px; margin-left: auto; }
+        .skeleton-billing { margin-bottom: 40px; }
+        .skeleton-billing .label { width: 60px; height: 10px; margin-bottom: 12px; }
+        .skeleton-billing .name { width: 180px; height: 20px; margin-bottom: 8px; }
+        .skeleton-billing .addr { width: 240px; height: 12px; margin-bottom: 6px; }
+        .skeleton-table { margin-bottom: 40px; }
+        .sk-row { height: 40px; margin-bottom: 8px; width: 100%; }
+        .sk-row.header { height: 32px; background: #eee; margin-bottom: 16px; }
+        @media (max-width: 850px) { .invoice-container { padding: 0; } .a4-page { width: 100%; min-height: auto; padding: 24px 16px; border-radius: 0; box-shadow: none; } }
+      `}</style>
     </div>
   );
 
@@ -140,17 +111,26 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
     <div className="invoice-container theme-adaptive">
       <div className="invoice-box a4-page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '50vh', textAlign: 'center', boxShadow: 'none', background: 'transparent' }}>
         <div>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>📄</div>
           <h2 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '12px', color: '#1a1a1e' }}>No Invoice Found</h2>
-          <p style={{ color: '#8e8e93', fontSize: '15px' }}>You do not have any invoice raised.</p>
+          <p style={{ color: '#8e8e93', fontSize: '15px' }}>
+            {errorMsg || 'You do not have any invoice raised.'}
+          </p>
         </div>
       </div>
+      <style jsx global>{`
+        body { margin: 0; font-family: 'Inter', system-ui, sans-serif; }
+        .invoice-container { display: flex; flex-direction: column; align-items: center; padding: 60px 20px; min-height: 100vh; background: #f9f9fb; }
+        .a4-page { width: 210mm; min-height: 297mm; background: white; padding: 15mm; box-shadow: 0 40px 100px rgba(0,0,0,0.06); border-radius: 8px; display: flex; flex-direction: column; }
+        @media (max-width: 850px) { .invoice-container { padding: 0; } .a4-page { width: 100%; min-height: auto; padding: 24px 16px; border-radius: 0; box-shadow: none; } }
+      `}</style>
     </div>
   );
 
-  const subtotal = invoice.subtotal || 0;
-  const discountAmount = (subtotal * (invoice.discount || 0)) / 100;
+  const subtotal = Number(invoice.subtotal || 0);
+  const discountAmount = (subtotal * (Number(invoice.discount) || 0)) / 100;
   const taxableAmount = subtotal - discountAmount;
-  const taxAmount = (taxableAmount * (invoice.tax || 0)) / 100;
+  const taxAmount = (taxableAmount * (Number(invoice.tax) || 0)) / 100;
   const grandTotal = taxableAmount + taxAmount;
 
   const companyName = invoice.companyName || defaultCompanyName;
@@ -164,7 +144,7 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
   return (
     <div className="invoice-container theme-adaptive">
       <Toaster position="top-center" richColors />
-      
+
       <div className="action-bar no-print">
         <button onClick={() => window.print()} className="btn-print">
           Download PDF / Print
@@ -177,6 +157,7 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
             <div className="vertex-ribbon paid">PAID</div>
           </div>
         )}
+
         <header className="invoice-header">
           <div className="branding">
             <h1 className="company-name">{companyName}</h1>
@@ -198,8 +179,8 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
               </div>
             </div>
           </div>
-          <div className="invoice-meta" style={{ textAlign: 'left' }}>
-            <h2 className="doc-title" style={{ textAlign: 'left' }}>Invoice</h2>
+          <div className="invoice-meta">
+            <h2 className="doc-title">Invoice</h2>
             <div className="meta-grid">
               <div className="meta-item">
                 <span className="label">Invoice No:</span>
@@ -245,7 +226,7 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
               </tr>
             </thead>
             <tbody>
-              {invoice.items?.map((item: any, i: number) => (
+              {Array.isArray(invoice.items) && invoice.items.map((item: any, i: number) => (
                 <tr key={i}>
                   <td>{i + 1}</td>
                   <td style={{ whiteSpace: 'pre-wrap' }}>{item.desc}</td>
@@ -274,7 +255,7 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
               <h4 className="label">{invoice.isPaid ? 'Payment Processed to:' : 'Bank Details:'}</h4>
               {invoice.isPaid && (
                 <p style={{ fontSize: '11px', color: '#34c759', fontWeight: 600, marginBottom: '8px', fontStyle: 'italic' }}>
-                  ✓ Payment was successfully processed on {invoice.paidAt} to the account below
+                  ✓ Payment successfully processed on {invoice.paidAt}
                 </p>
               )}
               <div className="bank-content">
@@ -287,7 +268,7 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
                     <p className="upi-id">7579966178@hdfc</p>
                   </div>
                   <div className="upi-scanner-wrap">
-                    <img src="/upi-qr.jpg" alt="UPI Scanner" className="upi-img" />
+                    <img src="/upi-qr.jpg" alt="UPI QR Code" className="upi-img" />
                   </div>
                 </div>
               )}
@@ -298,7 +279,7 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
               <span className="label">Sub Total:</span>
               <span className="val">₹{subtotal.toLocaleString('en-IN')}</span>
             </div>
-            {invoice.discount > 0 && (
+            {Number(invoice.discount) > 0 && (
               <div className="total-row">
                 <span className="label">Discount ({invoice.discount}%):</span>
                 <span className="val">- ₹{Math.round(discountAmount).toLocaleString('en-IN')}</span>
@@ -312,11 +293,11 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
               <span className="label">Grand Total:</span>
               <span className="val">₹{Math.round(grandTotal).toLocaleString('en-IN')}</span>
             </div>
-            {invoice.totalLeadValue > 0 && (
+            {summary && summary.totalLeadValue > 0 && (
               <div className="total-row" style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #f1f1f4', fontSize: '13px' }}>
                 <span className="label">Remaining Balance:</span>
-                <span className="val" style={{ color: invoice.balanceDue > 0 ? '#ff3b30' : '#34c759' }}>
-                  ₹{Math.max(0, invoice.balanceDue || 0).toLocaleString('en-IN')}
+                <span className="val" style={{ color: summary.balanceDue > 0 ? '#ff3b30' : '#34c759' }}>
+                  ₹{Math.max(0, summary.balanceDue).toLocaleString('en-IN')}
                 </span>
               </div>
             )}
@@ -334,14 +315,15 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
           </div>
         </div>
       </div>
+
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Dancing+Script:wght@600&display=swap');
         .vertex-ribbon-container { position: absolute; top: 0; left: 0; width: 80px; height: 80px; overflow: hidden; pointer-events: none; z-index: 10; }
         .vertex-ribbon { position: absolute; top: 15px; left: -25px; width: 100px; background: #34c759; color: white; font-size: 10px; font-weight: 800; text-align: center; transform: rotate(-45deg); box-shadow: 0 2px 4px rgba(0,0,0,0.2); letter-spacing: 1px; padding: 4px 0; text-transform: uppercase; }
         body { margin: 0; font-family: 'Inter', system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
         .invoice-container { display: flex; flex-direction: column; align-items: center; padding: 60px 20px; min-height: 100vh; background: #f9f9fb; }
-        @media (prefers-color-scheme: dark) { .theme-adaptive { background: #000000; } }
-        .action-bar { width: 210mm; max-width: 100%; margin-bottom: 24px; display: flex; justify-content: flex-end; gap: 12px; }
+        @media (prefers-color-scheme: dark) { .theme-adaptive { background: #000; } }
+        .action-bar { width: 210mm; max-width: 100%; margin-bottom: 24px; display: flex; justify-content: flex-end; }
         .btn-print { background: #007aff; color: white; border: none; padding: 12px 28px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(0,122,255,0.2); }
         .btn-print:hover { transform: translateY(-2px); }
         .a4-page { width: 210mm; min-height: 297mm; background: white; padding: 15mm; box-shadow: 0 40px 100px rgba(0,0,0,0.06); border-radius: 8px; display: flex; flex-direction: column; color: #1a1a1e !important; position: relative; }
@@ -357,16 +339,16 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
         .company-details p { margin: 0; }
         .contact-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
         .separator { color: #d1d1d6 !important; }
-        .doc-title { font-size: 36px; font-weight: 900; color: #000 !important; margin: 0 0 16px 0; text-align: right; text-transform: uppercase; letter-spacing: -0.04em; line-height: 1; }
-        .meta-grid { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
-        .meta-item { font-size: 14px; display: flex; gap: 0; align-items: center; width: 100%; }
+        .doc-title { font-size: 36px; font-weight: 900; color: #000 !important; margin: 0 0 16px 0; text-align: left; text-transform: uppercase; letter-spacing: -0.04em; line-height: 1; }
+        .meta-grid { display: flex; flex-direction: column; gap: 4px; }
+        .meta-item { font-size: 14px; display: flex; align-items: center; width: 100%; }
         .meta-item .label { font-size: 11px; font-weight: 700; color: #8e8e93 !important; text-transform: uppercase; letter-spacing: 0.05em; width: 100px; flex-shrink: 0; }
         .meta-item .val { font-weight: 700; color: #1a1a1e !important; }
         .billing-section { margin-bottom: 16px; }
         .section-title { font-size: 9px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; color: #8e8e93 !important; letter-spacing: 0.1em; }
         .client-name { font-size: 15px; font-weight: 700; color: #000 !important; margin: 0; }
         .client-address { font-size: 12px; color: #48484a !important; margin: 2px 0; white-space: pre-wrap; line-height: 1.3; }
-        .subject-area { margin-bottom: 16px; font-size: 13px; padding: 10px 14px; background: #f9f9fb; border-radius: 8px; border: 1px solid #f1f1f4; line-height: 1.3; color: #1c1c1e !important; font-weight: 500; }
+        .subject-area { margin-bottom: 16px; font-size: 13px; padding: 10px 14px; background: #f9f9fb; border-radius: 8px; border: 1px solid #f1f1f4; color: #1c1c1e !important; font-weight: 500; }
         .payment-instruction { background: #fff9e6; border: 1px solid #ffeeba; padding: 12px; border-radius: 8px; margin-bottom: 24px; text-align: center; font-size: 13px; color: #856404 !important; font-weight: 600; }
         .invoice-table { width: 100%; border-collapse: separate; border-spacing: 0; }
         .invoice-table th { text-align: left; padding: 10px 12px; font-size: 10px; font-weight: 700; text-transform: uppercase; color: #8e8e93 !important; border-bottom: 1px solid #000; letter-spacing: 0.1em; background: #fff; }
@@ -397,21 +379,6 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
         .sign-line { border-bottom: 1.2px solid #1a1a1e; margin-bottom: 12px; height: 60px; }
         .auth-sign p { font-size: 10px; font-weight: 700; color: #000 !important; margin: 0; text-transform: uppercase; letter-spacing: 1px; }
         .comp-label { margin-top: 4px !important; color: #8e8e93 !important; font-size: 9px !important; text-transform: none !important; letter-spacing: 0 !important; }
-        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
-        .sk-line, .sk-row { background: #f1f1f4; animation: pulse 1.5s ease-in-out infinite; border-radius: 4px; }
-        .skeleton-page { padding: 40px !important; }
-        .skeleton-header { display: flex; justify-content: space-between; margin-bottom: 60px; }
-        .skeleton-branding .title { width: 200px; height: 24px; margin-bottom: 12px; }
-        .skeleton-branding .sub { width: 140px; height: 12px; margin-bottom: 8px; }
-        .skeleton-meta .title { width: 120px; height: 28px; margin-bottom: 12px; margin-left: auto; }
-        .skeleton-meta .item { width: 160px; height: 14px; margin-bottom: 8px; margin-left: auto; }
-        .skeleton-billing { margin-bottom: 40px; }
-        .skeleton-billing .label { width: 60px; height: 10px; margin-bottom: 12px; }
-        .skeleton-billing .name { width: 180px; height: 20px; margin-bottom: 8px; }
-        .skeleton-billing .addr { width: 240px; height: 12px; margin-bottom: 6px; }
-        .skeleton-table { margin-bottom: 40px; }
-        .sk-row { height: 40px; margin-bottom: 8px; width: 100%; }
-        .sk-row.header { height: 32px; background: #eee; margin-bottom: 16px; }
         @media (max-width: 850px) {
           .invoice-container { padding: 0; }
           .action-bar { width: 100%; padding: 16px; margin: 0; background: white; border-bottom: 1px solid #f1f1f4; position: sticky; top: 0; z-index: 100; }

@@ -1,0 +1,56 @@
+{
+  "leadId": "ENQ-0002",
+  "invoices": [
+    {
+      "invoiceNo": "INV-0002",
+      "date": "30 April 2026",
+      "clientName": "Test Client",
+      "address": "",
+      "items": [
+        {
+          "id": 1,
+          "desc": "Invoice payment",
+          "qty": 1,
+          "rate": 0,
+          "total": 0
+        }
+      ],
+      "subtotal": 0,
+      "discount": 0,
+      "tax": 0,
+      "total": 0,
+      "isPaid": true,
+      "paidAt": "30 Apr 2026, 10:56 pm",
+      "amountPaid": 0
+    }
+  ],
+  "totalLeadValue": 0,
+  "totalPaidValue": 0,
+  "balanceDue": 0,
+  "isFullyPaid": false,
+  "updatedAt": "2026-04-30T17:26:43.488Z",
+  "lastInvoiceNo": "INV-0002",
+  "currentInvoice": {
+    "invoiceNo": "INV-0002",
+    "date": "30 April 2026",
+    "clientName": "Test Client",
+    "address": "",
+    "items": [
+      {
+        "id": 1,
+        "desc": "Invoice payment",
+        "qty": 1,
+        "rate": 0,
+        "total": 0
+      }
+    ],
+    "subtotal": 0,
+    "discount": 0,
+    "tax": 0,
+    "total": 0,
+    "isPaid": true,
+    "paidAt": "30 Apr 2026, 10:56 pm",
+    "amountPaid": 0
+  },
+  "lastSaved": "2026-04-30T17:26:43.488Z"
+}
