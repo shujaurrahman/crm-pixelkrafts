@@ -25,6 +25,13 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
+  const generateClientSlug = (leadName: string, leadId: string) => {
+    const nameSlug = (leadName || 'client').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const idSuffix = leadId.split('-')[1] || leadId;
+    return `${nameSlug}-${idSuffix}`;
+  };
+  const toInvoiceToken = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
   // --- Editable Company Data ---
   const [companyName, setCompanyName] = useState('Pixelkraft');
   const [companyAddress, setCompanyAddress] = useState('805 Wasil Pilibhit 262001 UP India');
@@ -336,7 +343,11 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
           ) : (
             <span className="paid-badge-toolbar">PAID</span>
           )}
-          <button className="btn-view" onClick={() => window.open(`/invoice/${id}/view?invoiceNo=${invoiceNo}`, '_blank')}>
+          <button className="btn-view" onClick={() => {
+            const clientSlug = generateClientSlug(clientName, id);
+            const invoiceToken = toInvoiceToken(invoiceNo);
+            window.open(`/invoice/${clientSlug}/${invoiceToken}/view`, '_blank');
+          }}>
             View Portal
           </button>
         </div>

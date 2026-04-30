@@ -69,6 +69,11 @@ interface BillingInvoiceRow {
 }
 
 const toInvoiceToken = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+const generateClientSlug = (leadName: string, leadId: string) => {
+  const nameSlug = (leadName || 'client').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  const idSuffix = leadId.split('-')[1] || leadId;
+  return `${nameSlug}-${idSuffix}`;
+};
 
 interface LeadEditDraft {
   date: string;
@@ -1444,7 +1449,7 @@ export default function Home() {
       });
       if (!res.ok) throw new Error('Failed to sync invoice');
       toast.success('Invoice generated successfully!');
-      window.open(`/invoice/${lead.id}/view?invoiceToken=${toInvoiceToken(invoiceData.invoiceNo)}`, '_blank');
+      window.open(`/invoice/${generateClientSlug(lead.clientName, lead.id)}/${toInvoiceToken(invoiceData.invoiceNo)}/view`, '_blank');
     } catch (e) {
       toast.error('Failed to generate invoice');
     } finally {
@@ -1518,7 +1523,8 @@ export default function Home() {
 
   const copyInvoiceLink = (invoice: BillingInvoiceRow) => {
     const invoiceToken = toInvoiceToken(invoice.invoiceNo);
-    const portalUrl = `${window.location.origin}/invoice/${invoice.leadId}/view?invoiceToken=${invoiceToken}`;
+    const clientSlug = generateClientSlug(invoice.leadName, invoice.leadId);
+    const portalUrl = `${window.location.origin}/invoice/${clientSlug}/${invoiceToken}/view`;
     navigator.clipboard.writeText(portalUrl);
     toast.success('Invoice link copied to clipboard!');
   };
@@ -4023,7 +4029,8 @@ export default function Home() {
                       )}
                       <button className="btn" onClick={() => {
                         const invoiceToken = toInvoiceToken(invoice.invoiceNo);
-                        window.open(`/invoice/${invoice.leadId}/view?invoiceToken=${invoiceToken}`, '_blank');
+                        const clientSlug = generateClientSlug(invoice.leadName, invoice.leadId);
+                        window.open(`/invoice/${clientSlug}/${invoiceToken}/view`, '_blank');
                       }} style={{ minWidth: '80px', padding: '8px 12px', justifyContent: 'center' }}>
                         View
                       </button>

@@ -6,16 +6,17 @@ import { toast, Toaster } from 'sonner';
 import { numberToWords } from '@/lib/number-to-words';
 import { getLeadBalanceDue, normalizeInvoiceRecord, summarizeInvoiceLedger, type InvoiceLedger } from '@/lib/invoice-utils';
 
-export default function InvoicePortal({ params: rawParams }: { params: Promise<{ id: string }> }) {
+export default function InvoicePortal({ params: rawParams }: { params: Promise<{ clientSlug: string; invoiceNo: string }> }) {
   const resolvedParams = use(rawParams);
   const fallbackParams = useParams();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const rawId = resolvedParams?.id || (fallbackParams?.id as string) || '';
+  const rawId = resolvedParams?.clientSlug || (fallbackParams?.clientSlug as string) || '';
+  const routeInvoiceNo = resolvedParams?.invoiceNo || (fallbackParams?.invoiceNo as string) || '';
   const pathnameSegments = pathname?.split('/').filter(Boolean) || [];
-  const visibleInvoiceToken = pathnameSegments[0] === 'invoice' && pathnameSegments[pathnameSegments.length - 1] === 'view'
+  const visibleInvoiceToken = routeInvoiceNo || (pathnameSegments[0] === 'invoice' && pathnameSegments[pathnameSegments.length - 1] === 'view'
     ? (pathnameSegments[2] || '')
-    : '';
+    : '');
   const requestedInvoiceToken = visibleInvoiceToken || searchParams?.get('invoiceToken') || searchParams?.get('invoiceNo') || '';
   const requestedInvoiceDate = searchParams?.get('invoiceDate') || '';
   const [invoice, setInvoice] = useState<any>(null);

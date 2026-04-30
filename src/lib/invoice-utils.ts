@@ -61,8 +61,7 @@ export function getInvoicePaymentAmount(invoice: Partial<InvoiceRecord>): number
 }
 
 export function buildInvoiceNo(leadId: string, invoiceCount: number): string {
-  const base = leadId.replace(/^ENQ-/, 'INV-');
-  return invoiceCount > 0 ? `${base}-${invoiceCount + 1}` : base;
+  return String(invoiceCount + 1).padStart(2, '0');
 }
 
 export function normalizeInvoiceRecord(raw: any): InvoiceRecord {
