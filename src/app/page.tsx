@@ -68,11 +68,21 @@ interface BillingInvoiceRow {
   isFullyPaid: boolean;
 }
 
-const toInvoiceToken = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-const generateClientSlug = (leadName: string, leadId: string) => {
-  const nameSlug = (leadName || 'client').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-  const idSuffix = leadId.split('-')[1] || leadId;
-  return `${nameSlug}-${idSuffix}`;
+const toInvoiceToken = (value: string) => (value || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+// Generates a clean URL-safe client slug from the client name only (unique enough with invoice number)
+const generateClientSlug = (leadName: string) => {
+  return (leadName || 'client').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+};
+// Extracts a clean 2-digit number from any invoice number format (INV-0002, INV-0002-2, 01, etc.)
+const getInvoiceUrlNo = (invoiceNo: string, fallbackIndex?: number): string => {
+  if (!invoiceNo) return fallbackIndex !== undefined ? String(fallbackIndex + 1).padStart(2, '0') : '01';
+  // If it's already a clean number like '01', '02'
+  if (/^\d+$/.test(invoiceNo)) return invoiceNo.padStart(2, '0');
+  // If it has a trailing -N suffix like INV-0002-2, use the trailing number
+  const trailMatch = invoiceNo.match(/-(\d+)$/);
+  if (trailMatch) return trailMatch[1].padStart(2, '0');
+  // Otherwise fall back to the sequential index
+  return fallbackIndex !== undefined ? String(fallbackIndex + 1).padStart(2, '0') : '01';
 };
 
 interface LeadEditDraft {
@@ -1449,7 +1459,7 @@ export default function Home() {
       });
       if (!res.ok) throw new Error('Failed to sync invoice');
       toast.success('Invoice generated successfully!');
-      window.open(`/invoice/${generateClientSlug(lead.clientName, lead.id)}/${toInvoiceToken(invoiceData.invoiceNo)}/view`, '_blank');
+      window.open(`/invoice/${generateClientSlug(lead.clientName)}/${getInvoiceUrlNo(invoiceData.invoiceNo)}/view`, '_blank');
     } catch (e) {
       toast.error('Failed to generate invoice');
     } finally {
@@ -1522,9 +1532,9 @@ export default function Home() {
   };
 
   const copyInvoiceLink = (invoice: BillingInvoiceRow) => {
-    const invoiceToken = toInvoiceToken(invoice.invoiceNo);
-    const clientSlug = generateClientSlug(invoice.leadName, invoice.leadId);
-    const portalUrl = `${window.location.origin}/invoice/${clientSlug}/${invoiceToken}/view`;
+    const clientSlug = generateClientSlug(invoice.leadName);
+    const invoiceUrlNo = getInvoiceUrlNo(invoice.invoiceNo);
+    const portalUrl = `${window.location.origin}/invoice/${clientSlug}/${invoiceUrlNo}/view`;
     navigator.clipboard.writeText(portalUrl);
     toast.success('Invoice link copied to clipboard!');
   };
@@ -2182,8 +2192,9 @@ export default function Home() {
                                   <button 
                                     className="btn btn-secondary btn-sm"
                                     onClick={() => {
-                                      setSelectedLeadId(inv.leadId);
-                                      setTab('invoices');
+                                      const clientSlug = generateClientSlug(inv.leadName);
+                                      const invoiceUrlNo = getInvoiceUrlNo(inv.invoiceNo);
+                                      window.open(`/invoice/${clientSlug}/${invoiceUrlNo}/view`, '_blank');
                                     }}
                                   >
                                     View
@@ -4028,9 +4039,9 @@ export default function Home() {
                         </button>
                       )}
                       <button className="btn" onClick={() => {
-                        const invoiceToken = toInvoiceToken(invoice.invoiceNo);
-                        const clientSlug = generateClientSlug(invoice.leadName, invoice.leadId);
-                        window.open(`/invoice/${clientSlug}/${invoiceToken}/view`, '_blank');
+                        const clientSlug = generateClientSlug(invoice.leadName);
+                        const invoiceUrlNo = getInvoiceUrlNo(invoice.invoiceNo);
+                        window.open(`/invoice/${clientSlug}/${invoiceUrlNo}/view`, '_blank');
                       }} style={{ minWidth: '80px', padding: '8px 12px', justifyContent: 'center' }}>
                         View
                       </button>
