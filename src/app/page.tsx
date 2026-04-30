@@ -481,7 +481,15 @@ export default function Home() {
     };
   }, []);
 
-  // Load billing invoices when tab changes or leads update
+  // Generate a derived dependency string so we don't re-fetch on every leads reference change
+  const leadsInvoiceHash = useMemo(() => {
+    return leads
+      .filter((lead) => lead.status === 'Order Confirmed' || Boolean(lead.invoiceCount) || Boolean(lead.invoiceNo))
+      .map(l => `${l.id}:${l.status}:${l.invoiceCount || 0}:${l.isPaid ? 1 : 0}:${l.expectedValue}`)
+      .join('|');
+  }, [leads]);
+
+  // Load billing invoices when tab changes or relevant lead data updates
   useEffect(() => {
     if (tab !== 'invoices' && tab !== 'dashboard') return;
 
@@ -558,7 +566,8 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, [tab, leads]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, leadsInvoiceHash]);
 
   // Initialize with dummy lead if no leads exist
   useEffect(() => {
@@ -1435,7 +1444,7 @@ export default function Home() {
       });
       if (!res.ok) throw new Error('Failed to sync invoice');
       toast.success('Invoice generated successfully!');
-      window.open(`/invoice/${toInvoiceToken(lead.clientName)}/view?invoiceToken=${toInvoiceToken(invoiceData.invoiceNo)}`, '_blank');
+      window.open(`/invoice/${lead.id}/view?invoiceToken=${toInvoiceToken(invoiceData.invoiceNo)}`, '_blank');
     } catch (e) {
       toast.error('Failed to generate invoice');
     } finally {
@@ -1508,9 +1517,8 @@ export default function Home() {
   };
 
   const copyInvoiceLink = (invoice: BillingInvoiceRow) => {
-    const leadSlug = toInvoiceToken(invoice.leadName);
     const invoiceToken = toInvoiceToken(invoice.invoiceNo);
-    const portalUrl = `${window.location.origin}/invoice/${leadSlug}/view?invoiceToken=${invoiceToken}`;
+    const portalUrl = `${window.location.origin}/invoice/${invoice.leadId}/view?invoiceToken=${invoiceToken}`;
     navigator.clipboard.writeText(portalUrl);
     toast.success('Invoice link copied to clipboard!');
   };
@@ -4014,9 +4022,8 @@ export default function Home() {
                         </button>
                       )}
                       <button className="btn" onClick={() => {
-                        const leadSlug = toInvoiceToken(invoice.leadName);
                         const invoiceToken = toInvoiceToken(invoice.invoiceNo);
-                        window.open(`/invoice/${leadSlug}/view?invoiceToken=${invoiceToken}`, '_blank');
+                        window.open(`/invoice/${invoice.leadId}/view?invoiceToken=${invoiceToken}`, '_blank');
                       }} style={{ minWidth: '80px', padding: '8px 12px', justifyContent: 'center' }}>
                         View
                       </button>

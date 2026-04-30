@@ -89,7 +89,9 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
           );
 
           const leadBalance = found ? getLeadBalanceDue(found) : summary.balanceDue;
-          const draftAmount = Number(found?.advanceValue || summary.balanceDue || leadBalance || found?.expectedValue || 0);
+          const draftAmount = ledgerInvoices.length > 0 
+            ? summary.balanceDue 
+            : Number(found?.advanceValue || leadBalance || found?.expectedValue || 0);
           const nextInvoiceNo = buildInvoiceNo(id, ledgerInvoices.length);
 
           if (isNewInvoiceDraft) {

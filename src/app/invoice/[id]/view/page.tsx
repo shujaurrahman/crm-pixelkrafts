@@ -30,7 +30,7 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
   const defaultCompanyInstagram = '@pixelkrafts_in';
   const defaultMsmeNumber = 'UDYAM-UP-60-0038284';
 
-  const normalizeToken = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  const normalizeToken = (value?: string) => (value || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -75,7 +75,10 @@ export default function InvoicePortal({ params: rawParams }: { params: Promise<{
             const ledger = data as InvoiceLedger;
             const summary = summarizeInvoiceLedger({ expectedValue: Number(data.totalLeadValue || 0) }, ledger);
             const selectedByNo = targetInvoiceToken
-              ? ledger.invoices.find((entry) => normalizeToken(entry.invoiceNo) === targetInvoiceToken)
+              ? ledger.invoices.find((entry, index) => {
+                  const entryInvoiceNo = entry.invoiceNo || `${targetId.replace('ENQ-', 'INV-')}-${index + 1}`;
+                  return normalizeToken(entryInvoiceNo) === targetInvoiceToken;
+                })
               : null;
             const selectedByDate = !selectedByNo && requestedInvoiceDate
               ? ledger.invoices.find((entry) => entry.date?.toLowerCase().replace(/[^a-z0-9]+/g, '-') === requestedInvoiceDate)
