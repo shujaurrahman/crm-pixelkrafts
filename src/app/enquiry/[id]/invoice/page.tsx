@@ -5,13 +5,6 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Lead } from '@/lib/crm-data';
 import { toast, Toaster } from 'sonner';
 import { numberToWords } from '@/lib/number-to-words';
-import {
-  buildInvoiceNo,
-  getLeadBalanceDue,
-  normalizeInvoiceRecord,
-  summarizeInvoiceLedger,
-  type InvoiceLedger,
-} from '@/lib/invoice-utils';
 
 export default function InvoiceEditor({ params: rawParams }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(rawParams);
@@ -63,116 +56,64 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch('/api/leads');
+        // Single API call — does lead + ledger reads in parallel on the server
+        const res = await fetch(`/api/leads/${id}/invoice-editor?t=${Date.now()}`, { cache: 'no-store' });
+        if (!res.ok) throw new Error('Failed to load invoice data');
         const data = await res.json();
-        const found = data.leads.find((l: Lead) => l.id === id);
-        
-        // Try to load existing invoice
-        const invRes = await fetch(`/api/leads/${id}/invoice?t=${Date.now()}`);
-        if (invRes.ok) {
-          const invData = await invRes.json();
-          const ledgerInvoices = Array.isArray(invData.invoices)
-            ? invData.invoices.map((entry: any) => normalizeInvoiceRecord(entry))
-            : invData.invoiceNo
-              ? [normalizeInvoiceRecord(invData)]
-              : [];
 
-          // Pick the specific invoice to edit:
-          // - ?invoiceIndex=N → pick by 1-based position
-          // - otherwise → pick the latest (currentInvoice or last in array)
-          let targetInvoice = invData.currentInvoice
-            ? normalizeInvoiceRecord(invData.currentInvoice)
-            : ledgerInvoices[ledgerInvoices.length - 1] || null;
+        const { lead: found, ledgerInvoices, currentInvoice, summary, nextInvoiceNo, draftAmount } = data;
 
-          if (editInvoiceIndex !== null && ledgerInvoices.length > 0) {
-            const idx = editInvoiceIndex - 1; // convert to 0-based
-            if (idx >= 0 && idx < ledgerInvoices.length) {
-              targetInvoice = ledgerInvoices[idx];
-            }
+        // Pick the specific invoice to edit:
+        // - ?invoiceIndex=N → pick by 1-based position
+        // - otherwise → pick the latest
+        let targetInvoice = currentInvoice || (ledgerInvoices.length > 0 ? ledgerInvoices[ledgerInvoices.length - 1] : null);
+
+        if (editInvoiceIndex !== null && ledgerInvoices.length > 0) {
+          const idx = editInvoiceIndex - 1;
+          if (idx >= 0 && idx < ledgerInvoices.length) {
+            targetInvoice = ledgerInvoices[idx];
           }
+        }
 
-          const latestInvoice = targetInvoice;
-          const summary = summarizeInvoiceLedger(
-            { expectedValue: Number(found?.expectedValue || invData.totalLeadValue || 0) },
-            Array.isArray(invData.invoices)
-              ? invData as InvoiceLedger
-              : {
-                  leadId: id,
-                  invoices: ledgerInvoices,
-                  totalLeadValue: Number(found?.expectedValue || 0),
-                  totalPaidValue: 0,
-                  balanceDue: 0,
-                  isFullyPaid: false,
-                  updatedAt: new Date().toISOString(),
-                  currentInvoice: latestInvoice || undefined,
-                }
-          );
+        const latestInvoice = targetInvoice;
 
-          const leadBalance = found ? getLeadBalanceDue(found) : summary.balanceDue;
-          const draftAmount = ledgerInvoices.length > 0 
-            ? summary.balanceDue 
-            : Number(found?.advanceValue || leadBalance || found?.expectedValue || 0);
-          const nextInvoiceNo = buildInvoiceNo(id, ledgerInvoices.length);
-
-          if (isNewInvoiceDraft) {
-            setInvoiceNo(nextInvoiceNo);
-            setInvoiceDate(new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }));
-            setClientName(found?.clientName || latestInvoice?.clientName || '');
-            setToAddress([found?.city, found?.state, found?.country].filter(Boolean).join(', '));
-            setSubject(`Invoice for ${found?.productName || 'Project'} - Balance Due`);
-            setItems([{
-              id: 1,
-              desc: `Invoice for ${found?.productName || 'project'} balance.`,
-              qty: 1,
-              rate: Math.round(draftAmount),
-              total: Math.round(draftAmount),
-            }]);
-            setIsPaid(false);
-            setPaidAt('');
-          } else if (latestInvoice) {
-            setInvoiceNo(latestInvoice.invoiceNo || nextInvoiceNo);
-            setInvoiceDate(latestInvoice.date || new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }));
-            setClientName(latestInvoice.clientName || found?.clientName || '');
-            setToAddress(latestInvoice.address || [found?.city, found?.state, found?.country].filter(Boolean).join(', '));
-            if (latestInvoice.subject) setSubject(latestInvoice.subject);
-            if (latestInvoice.items) setItems(latestInvoice.items);
-            if (latestInvoice.discount !== undefined) setDiscountRate(latestInvoice.discount);
-            if (latestInvoice.tax !== undefined) setGstRate(latestInvoice.tax);
-            if (latestInvoice.bankDetails) setBankDetails(latestInvoice.bankDetails);
-
-            if (latestInvoice.companyName) setCompanyName(latestInvoice.companyName);
-            if (latestInvoice.companyAddress) setCompanyAddress(latestInvoice.companyAddress);
-            if (latestInvoice.companyEmail) setCompanyEmail(latestInvoice.companyEmail);
-            if (latestInvoice.companyPhone) setCompanyPhone(latestInvoice.companyPhone);
-            if (latestInvoice.companyWebsite) setCompanyWebsite(latestInvoice.companyWebsite);
-            if (latestInvoice.companyInstagram) setCompanyInstagram(latestInvoice.companyInstagram);
-            if (latestInvoice.msmeNumber) setMsmeNumber(latestInvoice.msmeNumber);
-            if (latestInvoice.isPaid) setIsPaid(true);
-            if (latestInvoice.paidAt) setPaidAt(latestInvoice.paidAt);
-          } else if (found) {
-            setInvoiceNo(nextInvoiceNo);
-            setInvoiceDate(new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }));
-            setClientName(found.clientName);
-            const contactInfo = `Ph: ${found.phone || 'N/A'}\nEmail: ${found.email || 'N/A'}`;
-            const locationInfo = [found.city, found.state, found.country].filter(Boolean).join(', ');
-            setToAddress(`${locationInfo}\n${contactInfo}`);
-            setSubject(`Invoice for Advance - ${found.productName || 'Project'}`);
-            setItems([{
-              id: 1,
-              desc: `Advance for project ${found.productName || 'Intimation'} - as per project scope and discussion.`,
-              qty: 1,
-              rate: Math.round(draftAmount),
-              total: Math.round(draftAmount)
-            }]);
-          }
-
-          setInvoiceCount(ledgerInvoices.length || found?.invoiceCount || 0);
-          setInvoicePaidValue(summary.totalPaidValue);
-          setInvoiceBalanceDue(summary.balanceDue);
-          if (summary.isFullyPaid) setIsPaid(true);
-          if (summary.latestInvoice?.paidAt) setPaidAt(summary.latestInvoice.paidAt);
+        if (isNewInvoiceDraft) {
+          setInvoiceNo(nextInvoiceNo);
+          setInvoiceDate(new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }));
+          setClientName(found?.clientName || latestInvoice?.clientName || '');
+          setToAddress([found?.city, found?.state, found?.country].filter(Boolean).join(', '));
+          setSubject(`Invoice for ${found?.productName || 'Project'} - Balance Due`);
+          setItems([{
+            id: 1,
+            desc: `Invoice for ${found?.productName || 'project'} balance.`,
+            qty: 1,
+            rate: Math.round(draftAmount),
+            total: Math.round(draftAmount),
+          }]);
+          setIsPaid(false);
+          setPaidAt('');
+        } else if (latestInvoice) {
+          setInvoiceNo(latestInvoice.invoiceNo || nextInvoiceNo);
+          setInvoiceDate(latestInvoice.date || new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }));
+          setClientName(latestInvoice.clientName || found?.clientName || '');
+          setToAddress(latestInvoice.address || [found?.city, found?.state, found?.country].filter(Boolean).join(', '));
+          if (latestInvoice.subject) setSubject(latestInvoice.subject);
+          if (latestInvoice.items) setItems(latestInvoice.items);
+          if (latestInvoice.discount !== undefined) setDiscountRate(latestInvoice.discount);
+          if (latestInvoice.tax !== undefined) setGstRate(latestInvoice.tax);
+          if (latestInvoice.bankDetails) setBankDetails(latestInvoice.bankDetails);
+          if (latestInvoice.companyName) setCompanyName(latestInvoice.companyName);
+          if (latestInvoice.companyAddress) setCompanyAddress(latestInvoice.companyAddress);
+          if (latestInvoice.companyEmail) setCompanyEmail(latestInvoice.companyEmail);
+          if (latestInvoice.companyPhone) setCompanyPhone(latestInvoice.companyPhone);
+          if (latestInvoice.companyWebsite) setCompanyWebsite(latestInvoice.companyWebsite);
+          if (latestInvoice.companyInstagram) setCompanyInstagram(latestInvoice.companyInstagram);
+          if (latestInvoice.msmeNumber) setMsmeNumber(latestInvoice.msmeNumber);
+          if (latestInvoice.isPaid) setIsPaid(true);
+          if (latestInvoice.paidAt) setPaidAt(latestInvoice.paidAt);
         } else if (found) {
-          setLead(found);
+          setInvoiceNo(nextInvoiceNo);
+          setInvoiceDate(new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }));
           setClientName(found.clientName);
           const contactInfo = `Ph: ${found.phone || 'N/A'}\nEmail: ${found.email || 'N/A'}`;
           const locationInfo = [found.city, found.state, found.country].filter(Boolean).join(', ');
@@ -182,19 +123,26 @@ export default function InvoiceEditor({ params: rawParams }: { params: Promise<{
             id: 1,
             desc: `Advance for project ${found.productName || 'Intimation'} - as per project scope and discussion.`,
             qty: 1,
-            rate: Math.round(found.advanceValue || found.expectedValue),
-            total: Math.round(found.advanceValue || found.expectedValue)
+            rate: Math.round(draftAmount),
+            total: Math.round(draftAmount),
           }]);
-          setInvoiceBalanceDue(getLeadBalanceDue(found));
         }
+
+        if (found) setLead(found);
+        setInvoiceCount(summary.invoiceCount || 0);
+        setInvoicePaidValue(summary.totalPaidValue);
+        setInvoiceBalanceDue(summary.balanceDue);
+        if (summary.isFullyPaid) setIsPaid(true);
       } catch (e) {
-        toast.error('Failed to load data');
+        console.error('Invoice editor load error:', e);
+        toast.error('Failed to load invoice data');
       } finally {
         setIsLoading(false);
       }
     };
     fetchData();
   }, [id]);
+
 
   const subtotal = useMemo(() => items.reduce((acc, item) => acc + (item.qty * (item.rate || 0)), 0), [items]);
   const discountAmount = useMemo(() => (subtotal * discountRate) / 100, [subtotal, discountRate]);
