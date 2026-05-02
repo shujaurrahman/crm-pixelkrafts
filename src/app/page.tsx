@@ -69,6 +69,19 @@ interface BillingInvoiceRow {
   isFullyPaid: boolean;
 }
 
+interface QuoteHubRow {
+  leadId: string;
+  leadName: string;
+  quoteId: string;
+  quoteNo: string;
+  quoteDate: string;
+  updatedAt: string;
+  grandTotal: number;
+  status: string;
+  brand: string;
+  versionCount: number;
+}
+
 const toInvoiceToken = (value: string) => (value || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 // Generates a clean URL-safe client slug from the client name only (unique enough with invoice number)
 const generateClientSlug = (leadName: string) => {
@@ -347,6 +360,8 @@ export default function Home() {
   const [isInvoiceBusy, setIsInvoiceBusy] = useState(false);
   const [billingInvoices, setBillingInvoices] = useState<BillingInvoiceRow[]>([]);
   const [isBillingInvoicesLoading, setIsBillingInvoicesLoading] = useState(false);
+  const [quoteHubRows, setQuoteHubRows] = useState<QuoteHubRow[]>([]);
+  const [isQuoteHubLoading, setIsQuoteHubLoading] = useState(false);
 
   const isMounted = useRef(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -586,6 +601,54 @@ export default function Home() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, leadsInvoiceHash]);
+
+  useEffect(() => {
+    if (tab !== 'quotes') return;
+
+    let cancelled = false;
+
+    const loadQuoteHub = async () => {
+      setIsQuoteHubLoading(true);
+      try {
+        const quoteRows = await Promise.all(
+          leads
+            .filter((lead) => lead.status === 'Quote Sent' || lead.status === 'Order Confirmed' || Boolean(lead.quoteUrl))
+            .map(async (lead) => {
+              try {
+                const payload = await requestJson<{ quotes: any[] }>(`/api/leads/${lead.id}/quote?list=true&t=${Date.now()}`, { cache: 'no-store' });
+                const quotes = Array.isArray(payload.quotes) ? payload.quotes : [];
+                return quotes.map((quote: any) => ({
+                  leadId: lead.id,
+                  leadName: lead.clientName,
+                  quoteId: String(quote.quoteId || `${lead.id}-${Date.now()}`),
+                  quoteNo: String(quote.quoteNo || lead.id),
+                  quoteDate: String(quote.date || lead.date),
+                  updatedAt: String(quote.updatedAt || quote.date || lead.date),
+                  grandTotal: Number(quote.grandTotal || 0),
+                  status: lead.status,
+                  brand: String(lead.brand || ''),
+                  versionCount: quotes.length,
+                } satisfies QuoteHubRow));
+              } catch {
+                return [] as QuoteHubRow[];
+              }
+            })
+        );
+
+        if (!cancelled) {
+          setQuoteHubRows(quoteRows.flat().sort((a, b) => +new Date(b.updatedAt) - +new Date(a.updatedAt)));
+        }
+      } finally {
+        if (!cancelled) setIsQuoteHubLoading(false);
+      }
+    };
+
+    void loadQuoteHub();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, leads]);
 
   // Initialize with dummy lead if no leads exist
   useEffect(() => {
@@ -844,6 +907,23 @@ export default function Home() {
       byCity: Object.entries(byCity).sort((a,b) => b[1]-a[1]).slice(0, 5),
     };
   }, [leads, billingInvoices]);
+
+  const quoteHubGroups = useMemo(() => {
+    const grouped = new Map<string, QuoteHubRow[]>();
+    quoteHubRows.forEach((row) => {
+      const current = grouped.get(row.leadId) || [];
+      grouped.set(row.leadId, [...current, row]);
+    });
+    return Array.from(grouped.values()).map((rows) => ({
+      leadId: rows[0].leadId,
+      leadName: rows[0].leadName,
+      brand: rows[0].brand,
+      status: rows[0].status,
+      versionCount: rows[0].versionCount,
+      latest: rows.sort((a, b) => +new Date(b.updatedAt) - +new Date(a.updatedAt))[0],
+      versions: rows.sort((a, b) => +new Date(b.updatedAt) - +new Date(a.updatedAt)),
+    }));
+  }, [quoteHubRows]);
 
   const syncLeads = async (nextLeads: Lead[]) => {
     setSyncingStatus(true);
@@ -1425,6 +1505,24 @@ export default function Home() {
     const message = `Hello, please find the quotation for your enquiry (${leadId}) here: ${portalUrl}`;
     const waUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(waUrl, '_blank');
+  };
+
+  const cloneQuoteVersion = async (leadId: string, quoteId: string) => {
+    try {
+      toast.loading('Cloning quotation...', { id: 'clone-quote' });
+      const source = await requestJson<any>(`/api/leads/${leadId}/quote?qid=${encodeURIComponent(quoteId)}`, { cache: 'no-store' });
+      const res = await requestJson<any>(`/api/leads/${leadId}/quote?clone=${encodeURIComponent(quoteId)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...source, quoteId: null }),
+      });
+      toast.success('Quotation cloned', { id: 'clone-quote' });
+      window.location.reload();
+      return res;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to clone quotation', { id: 'clone-quote' });
+      throw error;
+    }
   };
 
   const createInvoice = async (lead: Lead) => {
@@ -3383,51 +3481,90 @@ export default function Home() {
               <div className="mgmt-header">
                 <div>
                   <h2 className="mgmt-title">Quotation Hub</h2>
-                  <p className="mgmt-subtitle">Select an enquiry to generate a professional quote</p>
+                  <p className="mgmt-subtitle">Version-aware quotations for every client, with view, edit, clone, and delete actions.</p>
+                </div>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <button className="btn" onClick={() => setTab('enquires')}>Open Pipeline</button>
+                  <button className="btn primary" onClick={() => setTab('new-enquires')}>New Enquiry</button>
                 </div>
               </div>
-              <div className="mgmt-card">
-                <div className="mgmt-card-header">
-                  <h3 className="mgmt-card-title">Recent Enquiries</h3>
+              <div className="stats-grid" style={{ marginBottom: '24px' }}>
+                {[
+                  ['Clients with Quotes', String(quoteHubGroups.length)],
+                  ['Quotation Versions', String(quoteHubRows.length)],
+                  ['Latest Quote Value', money(quoteHubRows[0]?.grandTotal || 0)],
+                  ['Freshest Update', quoteHubRows[0]?.updatedAt ? formatDate(quoteHubRows[0].updatedAt) : '—'],
+                ].map(([label, value]) => (
+                  <article className="card stat-card" key={label}>
+                    <span>{label}</span>
+                    <strong>{value}</strong>
+                  </article>
+                ))}
+              </div>
+
+              {isQuoteHubLoading ? (
+                <div className="mgmt-card">
+                  <div className="mgmt-card-header"><h3 className="mgmt-card-title">Loading quotation versions...</h3></div>
                 </div>
-                <div className="mgmt-list">
-                  {leads.slice(0, 20).map((l) => (
-                    <div key={l.id} className="mgmt-list-item">
-                      <div className="mgmt-item-icon" style={{ background: 'var(--blue-soft)', color: 'var(--blue)' }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
+              ) : quoteHubGroups.length ? (
+                <div style={{ display: 'grid', gap: '16px' }}>
+                  {quoteHubGroups.map((group) => (
+                    <article key={group.leadId} className="card panel" style={{ padding: '0', overflow: 'hidden' }}>
+                      <div className="header" style={{ padding: '16px 20px', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                            <h3 style={{ margin: 0, fontSize: '16px' }}>{group.leadName}</h3>
+                            <span className="meta-pill" style={{ background: 'var(--blue-soft)', color: 'var(--blue)', borderColor: 'var(--blue)' }}>{group.leadId}</span>
+                            <span className="meta-pill">{group.brand}</span>
+                            <span className="meta-pill">{group.versionCount} versions</span>
+                          </div>
+                          <p style={{ margin: '6px 0 0', fontSize: '12px', color: 'var(--muted)' }}>{group.status} · Latest total {money(group.latest.grandTotal)}</p>
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          <button className="btn primary" onClick={() => router.push(`/quote/${group.latest.quoteId}/view`)}>View Latest</button>
+                          <button className="btn" onClick={() => router.push(`/enquiry/${group.leadId}/quote?qid=${encodeURIComponent(group.latest.quoteId)}`)}>Edit Latest</button>
+                          <button className="btn" onClick={() => cloneQuoteVersion(group.leadId, group.latest.quoteId)}>Clone</button>
+                        </div>
                       </div>
-                      <div className="mgmt-item-body">
-                        <span className="mgmt-item-name">{l.clientName}</span>
-                        <span className="mgmt-item-meta">{l.id} · {l.brand} · {l.status}</span>
+                      <div className="mgmt-list">
+                        {group.versions.map((quote, index) => (
+                          <div key={quote.quoteId} className="mgmt-list-item" style={{ alignItems: 'center' }}>
+                            <div className="mgmt-item-icon" style={{ background: index === 0 ? 'var(--blue-soft)' : 'var(--paper-strong)', color: index === 0 ? 'var(--blue)' : 'var(--muted)' }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
+                            </div>
+                            <div className="mgmt-item-body">
+                              <span className="mgmt-item-name">{quote.quoteNo}</span>
+                              <span className="mgmt-item-meta">Updated {formatDate(quote.updatedAt)} · {money(quote.grandTotal)} {index === 0 ? '· Latest' : ''}</span>
+                            </div>
+                            <div className="mgmt-item-actions">
+                              <button className="btn btn-compact" onClick={() => router.push(`/quote/${quote.quoteId}/view`)}>View</button>
+                              <button className="btn btn-compact" onClick={() => router.push(`/enquiry/${group.leadId}/quote?qid=${encodeURIComponent(quote.quoteId)}`)}>Edit</button>
+                              <button className="btn btn-compact" onClick={() => cloneQuoteVersion(group.leadId, quote.quoteId)}>Clone</button>
+                              <button
+                                className="btn btn-compact"
+                                onClick={async () => {
+                                  if (!confirm(`Delete quotation ${quote.quoteNo}?`)) return;
+                                  await requestJson(`/api/leads/${group.leadId}/quote?qid=${encodeURIComponent(quote.quoteId)}`, { method: 'DELETE' });
+                                  toast.success('Quotation deleted');
+                                  window.location.reload();
+                                }}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                      <div className="mgmt-item-actions">
-                        {l.quoteUrl || l.status === 'Quote Sent' || l.status === 'Order Confirmed' ? (
-                          <>
-                            <button className="btn primary" onClick={() => router.push(`/quote/${l.id}/view`)}>
-                              View Quote
-                            </button>
-                            <button className="btn" onClick={() => router.push(`/enquiry/${l.id}/quote`)}>
-                              Edit Quote
-                            </button>
-                            <button className="btn" onClick={() => shareOnWhatsApp(l.id)} style={{ background: '#22c55e', color: 'white', borderColor: '#22c55e' }}>
-                              WhatsApp
-                            </button>
-                          </>
-                        ) : (
-                          <button className="btn primary" onClick={() => router.push(`/enquiry/${l.id}/quote`)}>
-                            Generate Quote
-                          </button>
-                        )}
-                      </div>
-                    </div>
+                    </article>
                   ))}
-                  {!leads.length && (
-                    <div className="mgmt-empty">
-                      <p>No enquiries found to generate quotes for.</p>
-                    </div>
-                  )}
                 </div>
-              </div>
+              ) : (
+                <div className="mgmt-card">
+                  <div className="mgmt-empty">
+                    <p>No quotation versions found yet. Open an enquiry and create the first quote.</p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

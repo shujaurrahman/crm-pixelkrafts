@@ -18,7 +18,8 @@ export default function QuotePage() {
   const [productsByBrand, setProductsByBrand] = useState<any>({});
 
   // --- Editable Data State ---
-  const [quoteNo, setQuoteNo] = useState(`EQ-${String(id).split('-')[1] || id}-${new Date().getFullYear()}`);
+  const [docTitle, setDocTitle] = useState('QUOTATION');
+  const [quoteNo, setQuoteNo] = useState(`PKQ-${String(id).split('-')[1] || id}-${new Date().getFullYear()}`);
   const [quoteDate, setQuoteDate] = useState(new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }));
   const [validUntil, setValidUntil] = useState('30 Days from date of quotation');
   const [fromDetails, setFromDetails] = useState('Pixelkraft Software Solutions Pvt. Ltd.\nUdyam No: UDYAM-UP-60-0038284\nA-24, Sector 63, Noida, Uttar Pradesh 201301\nEmail: hello@pixelkrafts.io | Phone: +91 98XXX XXXXX');
@@ -77,13 +78,14 @@ export default function QuotePage() {
   const saveProgress = useCallback(() => {
     const quoteData = {
       quoteId: currentQuoteId,
+      docTitle,
       quoteNo, quoteDate, validUntil, fromDetails, toAddress, subject, notes,
       items, discountRate, gstRate, sections,
       companySignatory, companyName, clientSignatory, clientStamp,
       subtotal, discountAmount, gstAmount, amountInWords, grandTotal
     };
     localStorage.setItem(`quote_progress_${id}`, JSON.stringify(quoteData));
-  }, [id, currentQuoteId, quoteNo, quoteDate, validUntil, fromDetails, toAddress, subject, notes, items, discountRate, gstRate, sections, companySignatory, companyName, clientSignatory, clientStamp]);
+  }, [id, currentQuoteId, docTitle, quoteNo, quoteDate, validUntil, fromDetails, toAddress, subject, notes, items, discountRate, gstRate, sections, companySignatory, companyName, clientSignatory, clientStamp]);
 
   const syncQuoteToCRM = async (saveAsNew = false) => {
     try {
@@ -95,6 +97,7 @@ export default function QuotePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           quoteId: saveAsNew ? null : currentQuoteId,
+          docTitle,
           quoteNo, quoteDate: todayStr, validUntil, fromDetails, toAddress, subject, notes,
           items, discountRate, gstRate, sections,
           companySignatory, companyName, clientSignatory, clientStamp,
@@ -140,6 +143,7 @@ export default function QuotePage() {
         if (initialData) {
           const todayStr = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
           if (initialData.quoteId) setCurrentQuoteId(initialData.quoteId);
+          if (initialData.docTitle) setDocTitle(initialData.docTitle);
           setQuoteNo(initialData.quoteNo); 
           setQuoteDate(todayStr); 
           setValidUntil(initialData.validUntil);
@@ -475,7 +479,7 @@ export default function QuotePage() {
               <div className="logo-level-date"><strong>Date:</strong> {quoteDate}</div>
               {pageIdx === 0 && (
                 <>
-                  <h2 className="doc-type-title">QUOTATION</h2>
+                  <h2 className="doc-type-title editable-title" contentEditable suppressContentEditableWarning onBlur={e => setDocTitle(e.currentTarget.innerText.trim() || 'QUOTATION')}>{docTitle}</h2>
                   <div className="header-meta-grid">
                     <div className="to-side">
                       <div className="to-label">To,</div>
@@ -667,6 +671,8 @@ export default function QuotePage() {
         .page-content { padding: 48mm 18mm 58mm 18mm; height: 100%; display: flex; flex-direction: column; }
         .logo-level-date { position: absolute; top: 25mm; right: 20mm; font-size: 12px; font-weight: 600; }
         .doc-type-title { text-align: center; font-size: 24px; font-weight: 700; letter-spacing: 4px; margin: 0 0 25px; }
+        .editable-title { outline: none; }
+        .editable-title:hover, .editable-title:focus { background: #fef9c3; }
 
         .header-meta-grid { display: grid; grid-template-columns: 1fr 1fr; border: 2.5px solid #000; margin-bottom: 25px; }
         .to-side { padding: 15px; border-right: 2.5px solid #000; }

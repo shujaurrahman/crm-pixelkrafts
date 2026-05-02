@@ -28,7 +28,8 @@ export default function ClientQuotePortal({ params: rawParams }: { params: Promi
     const rate = qty > 0 ? Math.round(total / qty) : total;
 
     const fallback = {
-      quoteNo: `${lead?.id || id}`,
+          quoteNo: `PKQ-${lead?.id || id}`,
+          docTitle: 'QUOTATION',
       quoteDate: lead?.date || new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
       validUntil: '30 Days from date of quotation',
       fromDetails: 'Pixelkraft Software Solutions Pvt. Ltd.\nUdyam No: UDYAM-UP-60-0038284\nA-24, Sector 63, Noida, Uttar Pradesh 201301\nEmail: hello@pixelkrafts.io | Phone: +91 98XXX XXXXX',
@@ -227,7 +228,7 @@ export default function ClientQuotePortal({ params: rawParams }: { params: Promi
               <div className="logo-level-date"><strong>Date:</strong> {quote.quoteDate}</div>
               {pageIdx === 0 && (
                 <>
-                  <h2 className="doc-type-title">QUOTATION</h2>
+                  <h2 className="doc-type-title">{quote.docTitle || 'QUOTATION'}</h2>
                   <div className="header-meta-grid">
                     <div className="to-side">
                       <div className="metadata-box" style={{ minHeight: '110px' }}>
