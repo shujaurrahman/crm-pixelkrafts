@@ -220,36 +220,26 @@ export default function QuotePage() {
     }
   };
 
-  const handleProductBlur = async (id: number, value: string) => {
+  const handleProductBlur = (id: number, value: string) => {
+    // Only match products from library; don't auto-add
     const title = value.split('\n')[0].trim();
     if (!title || title.startsWith('[') || title === 'New Product') return;
 
     const match = products.find(p => p.title.toLowerCase() === title.toLowerCase());
-    if (!match) {
-      // Suggest adding to library
-      const item = items.find(i => i.id === id);
-      const detail = value.split('\n').slice(1).join('\n').trim();
-      const unitPrice = item?.rate || 0;
-
-      if (confirm(`"${title}" is not in your library. Add it to Product Library?`)) {
-        const brand = lead?.brand || 'Development';
-        const newProd = { code: `CUS-${Date.now()}`, title, detail, unitPrice, category: 'General' };
-        const nextProducts = { ...productsByBrand, [brand]: [newProd, ...(productsByBrand[brand] || [])] };
-        
-        try {
-          await fetch('/api/products', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ productsByBrand: nextProducts })
-          });
-          setProductsByBrand(nextProducts);
-          setProducts(Object.values(nextProducts).flat());
-          toast.success('Added to Library!');
-        } catch (e) {
-          toast.error('Failed to save to library');
-        }
+    if (match) {
+      // Product found in library - auto-populate with details
+      let finalDesc = `${match.title}\n${match.detail}`;
+      if (match.stockStatus === 'Out of Stock') {
+        finalDesc += `\n[NOTE: Currently Out of Stock]`;
+      } else if (match.stockStatus === 'Lead Time') {
+        finalDesc += `\n[Lead Time: ${match.leadTime || 'Contact for info'}]`;
+      } else if (match.stockStatus === 'Limited Stock') {
+        finalDesc += `\n[Limited Stock Available]`;
       }
+      setItems(items.map(i => i.id === id ? { ...i, desc: finalDesc, rate: match.unitPrice } : i));
+      toast.success(`Matched: ${match.title}`);
     }
+    // If no match found, do nothing - user can manually type or select from dropdown
   };
 
   const addSection = () => setSections([...sections, { title: 'NEW SECTION HEADING', items: ['New list item...'] }]);
@@ -416,7 +406,6 @@ export default function QuotePage() {
       <div className="no-print modern-toolbar">
         <div className="toolbar-left">
           <button className="cool-back-btn" onClick={() => router.back()}><span>←</span> Back</button>
-          <div className="brand-indicator"><span className="dot"></span><h2>PIXELKRAFT</h2></div>
         </div>
 
         <div className="toolbar-center">

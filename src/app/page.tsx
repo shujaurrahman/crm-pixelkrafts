@@ -3483,7 +3483,7 @@ export default function Home() {
               <div className="mgmt-header">
                 <div>
                   <h2 className="mgmt-title">Quotation Hub</h2>
-                  <p className="mgmt-subtitle">Version-aware quotations for every client, with view, edit, clone, and delete actions.</p>
+                  <p className="mgmt-subtitle">Professional quotations with version history, edit, clone, and delete options.</p>
                 </div>
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                   <button className="btn" onClick={() => setTab('enquires')}>Open Pipeline</button>
@@ -3504,34 +3504,36 @@ export default function Home() {
                 ))}
               </div>
 
-              <div className="mgmt-card" style={{ marginBottom: '24px' }}>
-                <div className="mgmt-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="mgmt-card" style={{ marginBottom: '28px', borderLeft: '4px solid var(--blue)' }}>
+                <div className="mgmt-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                   <div>
-                    <h3 className="mgmt-card-title">Start a New Quote</h3>
-                    <p className="mgmt-subtitle" style={{ marginBottom: 0 }}>Pick any entered lead and open the quotation editor immediately.</p>
+                    <h3 className="mgmt-card-title" style={{ marginBottom: '6px' }}>Create New Quotation</h3>
+                    <p className="mgmt-subtitle" style={{ marginBottom: 0, fontSize: '13px' }}>Select a lead below to start creating or editing a quotation.</p>
                   </div>
-                  <button className="btn primary" onClick={() => setTab('enquires')}>Open Enquiries</button>
+                  <button className="btn primary" onClick={() => setTab('enquires')} style={{ whiteSpace: 'nowrap' }}>View All Leads</button>
                 </div>
                 <div className="mgmt-list">
-                  {leads.slice(0, 10).map((lead) => {
+                  {leads.slice(0, 8).map((lead) => {
                     const alreadyQuoted = hasQuoteForLead(lead.id);
+                    const quoteGroup = quoteHubGroups.find((g) => g.leadId === lead.id);
                     return (
-                      <div key={lead.id} className="mgmt-list-item">
+                      <div key={lead.id} className="mgmt-list-item" style={{ padding: '12px 16px' }}>
                         <div className="mgmt-item-icon" style={{ background: alreadyQuoted ? 'var(--blue-soft)' : 'var(--paper-strong)', color: alreadyQuoted ? 'var(--blue)' : 'var(--muted)' }}>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
                         </div>
                         <div className="mgmt-item-body">
-                          <span className="mgmt-item-name">{lead.clientName}</span>
-                          <span className="mgmt-item-meta">{lead.id} · {lead.brand} · {alreadyQuoted ? `${quoteHubGroups.find((g) => g.leadId === lead.id)?.versionCount || 1} quote(s)` : 'No quotation yet'}</span>
+                          <span className="mgmt-item-name" style={{ fontWeight: 600 }}>{lead.clientName}</span>
+                          <span className="mgmt-item-meta">
+                            {lead.id} · <strong>{lead.brand}</strong>
+                            {alreadyQuoted && ` · ${quoteGroup?.versionCount || 1} version${(quoteGroup?.versionCount || 1) !== 1 ? 's' : ''}`}
+                          </span>
                         </div>
-                        <div className="mgmt-item-actions">
-                          <button className="btn primary" onClick={() => router.push(`/enquiry/${lead.id}/quote`)}>
-                            {alreadyQuoted ? 'New Version' : 'Create Quote'}
+                        <div className="mgmt-item-actions" style={{ gap: '8px' }}>
+                          <button className="btn primary" style={{ fontSize: '13px' }} onClick={() => router.push(`/enquiry/${lead.id}/quote`)}>
+                            {alreadyQuoted ? 'New Version' : '+ Create'}
                           </button>
                           {alreadyQuoted && (
-                            <button className="btn" onClick={() => router.push(`/quote/${quoteHubGroups.find((g) => g.leadId === lead.id)?.latest.quoteId}/view`)}>
-                              Latest View
-                            </button>
+                            <button className="btn" style={{ fontSize: '13px' }} onClick={() => router.push(`/quote/${quoteGroup?.latest.quoteId}/view`)}>View Latest</button>
                           )}
                         </div>
                       </div>
@@ -3539,52 +3541,61 @@ export default function Home() {
                   })}
                   {!leads.length && (
                     <div className="mgmt-empty">
-                      <p>No leads available yet. Create an enquiry first, then start a quotation from here.</p>
+                      <p>📋 No leads available yet. <button className="btn" style={{ textDecoration: 'underline', padding: 0, fontSize: 'inherit', fontWeight: 600, background: 'none', border: 'none', color: 'var(--blue)', cursor: 'pointer' }} onClick={() => setTab('new-enquires')}>Create an enquiry</button> first.</p>
                     </div>
                   )}
                 </div>
               </div>
 
               {isQuoteHubLoading ? (
-                <div className="mgmt-card">
-                  <div className="mgmt-card-header"><h3 className="mgmt-card-title">Loading quotation versions...</h3></div>
+                <div className="mgmt-card" style={{ textAlign: 'center', padding: '40px 20px' }}>
+                  <p style={{ color: 'var(--muted)' }}>Loading quotation versions...</p>
                 </div>
               ) : quoteHubGroups.length ? (
-                <div style={{ display: 'grid', gap: '16px' }}>
+                <div style={{ display: 'grid', gap: '20px' }}>
                   {quoteHubGroups.map((group) => (
-                    <article key={group.leadId} className="card panel" style={{ padding: '0', overflow: 'hidden' }}>
-                      <div className="header" style={{ padding: '16px 20px', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                            <h3 style={{ margin: 0, fontSize: '16px' }}>{group.leadName}</h3>
-                            <span className="meta-pill" style={{ background: 'var(--blue-soft)', color: 'var(--blue)', borderColor: 'var(--blue)' }}>{group.leadId}</span>
-                            <span className="meta-pill">{group.brand}</span>
-                            <span className="meta-pill">{group.versionCount} versions</span>
+                    <article key={group.leadId} className="card panel" style={{ padding: '0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+                      {/* Group Header */}
+                      <div style={{ padding: '18px 20px', borderBottom: '1px solid var(--line)', background: 'var(--paper-soft)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>
+                          <div style={{ flex: 1, minWidth: '250px' }}>
+                            <h3 style={{ margin: '0 0 8px', fontSize: '15px', fontWeight: 700 }}>{group.leadName}</h3>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                              <span className="meta-pill" style={{ background: 'var(--blue-soft)', color: 'var(--blue)', fontSize: '12px', fontWeight: 600 }}>{group.leadId}</span>
+                              <span className="meta-pill" style={{ fontSize: '12px' }}>{group.brand}</span>
+                              <span className="meta-pill" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--amber)' }}>{group.versionCount} version{group.versionCount !== 1 ? 's' : ''}</span>
+                            </div>
+                            <p style={{ margin: '0', fontSize: '12px', color: 'var(--muted)' }}>{group.status} • Latest {money(group.latest.grandTotal)}</p>
                           </div>
-                          <p style={{ margin: '6px 0 0', fontSize: '12px', color: 'var(--muted)' }}>{group.status} · Latest total {money(group.latest.grandTotal)}</p>
-                        </div>
-                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                          <button className="btn primary" onClick={() => router.push(`/quote/${group.latest.quoteId}/view`)}>View Latest</button>
-                          <button className="btn" onClick={() => router.push(`/enquiry/${group.leadId}/quote?qid=${encodeURIComponent(group.latest.quoteId)}`)}>Edit Latest</button>
-                          <button className="btn" onClick={() => cloneQuoteVersion(group.leadId, group.latest.quoteId)}>Clone</button>
+                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                            <button className="btn primary" style={{ fontSize: '13px', whiteSpace: 'nowrap' }} onClick={() => router.push(`/quote/${group.latest.quoteId}/view`)}>👁 View</button>
+                            <button className="btn" style={{ fontSize: '13px', whiteSpace: 'nowrap' }} onClick={() => router.push(`/enquiry/${group.leadId}/quote?qid=${encodeURIComponent(group.latest.quoteId)}`)}>✎ Edit</button>
+                            <button className="btn" style={{ fontSize: '13px', whiteSpace: 'nowrap' }} onClick={() => cloneQuoteVersion(group.leadId, group.latest.quoteId)}>⎘ Clone</button>
+                          </div>
                         </div>
                       </div>
-                      <div className="mgmt-list">
+
+                      {/* Version List */}
+                      <div className="mgmt-list" style={{ borderRadius: '0' }}>
                         {group.versions.map((quote, index) => (
-                          <div key={quote.quoteId} className="mgmt-list-item" style={{ alignItems: 'center' }}>
-                            <div className="mgmt-item-icon" style={{ background: index === 0 ? 'var(--blue-soft)' : 'var(--paper-strong)', color: index === 0 ? 'var(--blue)' : 'var(--muted)' }}>
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
+                          <div key={quote.quoteId} className="mgmt-list-item" style={{ alignItems: 'center', padding: '12px 16px', borderTop: index === 0 ? 'none' : '1px solid var(--line)' }}>
+                            <div className="mgmt-item-icon" style={{ background: index === 0 ? 'var(--blue-soft)' : 'var(--paper-strong)', color: index === 0 ? 'var(--blue)' : 'var(--muted)', fontSize: '12px', fontWeight: 600 }}>
+                              {index === 0 ? '★' : index + 1}
                             </div>
                             <div className="mgmt-item-body">
-                              <span className="mgmt-item-name">{quote.quoteNo}</span>
-                              <span className="mgmt-item-meta">Updated {formatDate(quote.updatedAt)} · {money(quote.grandTotal)} {index === 0 ? '· Latest' : ''}</span>
+                              <span className="mgmt-item-name" style={{ fontWeight: 600 }}>{quote.quoteNo}</span>
+                              <span className="mgmt-item-meta">
+                                {formatDate(quote.updatedAt)} · {money(quote.grandTotal)}
+                                {index === 0 && <span style={{ color: 'var(--blue)', fontWeight: 600, marginLeft: '6px' }}>Latest</span>}
+                              </span>
                             </div>
-                            <div className="mgmt-item-actions">
-                              <button className="btn btn-compact" onClick={() => router.push(`/quote/${quote.quoteId}/view`)}>View</button>
-                              <button className="btn btn-compact" onClick={() => router.push(`/enquiry/${group.leadId}/quote?qid=${encodeURIComponent(quote.quoteId)}`)}>Edit</button>
-                              <button className="btn btn-compact" onClick={() => cloneQuoteVersion(group.leadId, quote.quoteId)}>Clone</button>
+                            <div className="mgmt-item-actions" style={{ gap: '6px' }}>
+                              <button className="btn btn-compact" style={{ fontSize: '12px' }} onClick={() => router.push(`/quote/${quote.quoteId}/view`)}>View</button>
+                              <button className="btn btn-compact" style={{ fontSize: '12px' }} onClick={() => router.push(`/enquiry/${group.leadId}/quote?qid=${encodeURIComponent(quote.quoteId)}`)}>Edit</button>
+                              <button className="btn btn-compact" style={{ fontSize: '12px' }} onClick={() => cloneQuoteVersion(group.leadId, quote.quoteId)}>Clone</button>
                               <button
                                 className="btn btn-compact"
+                                style={{ fontSize: '12px', color: 'var(--danger)' }}
                                 onClick={async () => {
                                   if (!confirm(`Delete quotation ${quote.quoteNo}?`)) return;
                                   await requestJson(`/api/leads/${group.leadId}/quote?qid=${encodeURIComponent(quote.quoteId)}`, { method: 'DELETE' });
@@ -3602,9 +3613,9 @@ export default function Home() {
                   ))}
                 </div>
               ) : (
-                <div className="mgmt-card">
+                <div className="mgmt-card" style={{ textAlign: 'center', padding: '40px 20px' }}>
                   <div className="mgmt-empty">
-                    <p>No quotation versions found yet. Open an enquiry and create the first quote.</p>
+                    <p>📊 No quotations yet. Open an enquiry above and create your first quote.</p>
                   </div>
                 </div>
               )}
