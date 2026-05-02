@@ -491,7 +491,6 @@ export default function QuotePage() {
                         <div className="m-line"><strong>Date:</strong> <span>{quoteDate}</span></div>
                         <div className="m-line"><strong>Validity:</strong> <span contentEditable suppressContentEditableWarning onBlur={e => setValidUntil(e.currentTarget.innerText)}>{validUntil}</span></div>
                         <div className="from-details-block">
-                          <div className="from-title">From</div>
                           <div className="editable from-details-text" contentEditable suppressContentEditableWarning onBlur={e => setFromDetails(e.currentTarget.innerText)}>{fromDetails}</div>
                         </div>
                       </div>
@@ -554,7 +553,7 @@ export default function QuotePage() {
                     <div className="sum-row grand-total-line"><span className="sum-label">GRAND TOTAL:</span> <span className="sum-val">₹{Math.round(grandTotal).toLocaleString('en-IN')}</span></div>
                   </div>
                   <div className="amount-in-words"><strong>Amount in Words:</strong> {amountInWords}</div>
-                  <div className="note-box" contentEditable suppressContentEditableWarning onBlur={e => setNotes(e.currentTarget.innerText)}><strong>Note:</strong> {notes}</div>
+                  <div className="note-box" contentEditable suppressContentEditableWarning onBlur={e => setNotes(e.currentTarget.innerText)}>{notes}</div>
                 </>
               )}
             </div>
@@ -679,8 +678,7 @@ export default function QuotePage() {
         .ref-side { padding: 15px; display: flex; align-items: center; justify-content: center; }
         .meta-justify-box { width: 100%; display: flex; flex-direction: column; gap: 6px; padding: 0 20px; }
         .m-line { display: grid; grid-template-columns: 110px 1fr; font-size: 13px; }
-        .from-details-block { margin-top: 6px; border-top: 1px solid #cbd5e1; padding-top: 8px; }
-        .from-title { font-size: 11px; font-weight: 800; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.03em; }
+        .from-details-block { margin-top: 6px; border-top: 1px dotted #94a3b8; padding-top: 8px; }
         .from-details-text { font-size: 12px; line-height: 1.5; }
         .to-label { font-size: 14px; font-weight: 800; margin-bottom: 8px; }
         .address-val { font-size: 13.5px; line-height: 1.6; font-weight: 500; }
@@ -706,7 +704,7 @@ export default function QuotePage() {
         .sum-val { font-weight: 900; color: #000; }
         .grand-total-line { border-top: 2.5px solid #000; padding-top: 6px; margin-top: 6px; font-size: 15px; color: #000; }
         .amount-in-words { margin-top: 15px; font-size: 11px; font-style: italic; color: #374151; border-bottom: 1px solid #eee; padding-bottom: 8px; margin-bottom: 15px; }
-        .note-box { font-size: 11px; outline: none; line-height: 1.5; font-weight: 500; }
+        .note-box { font-size: 11px; outline: none; line-height: 1.5; font-weight: 500; white-space: pre-wrap; }
 
         .section-block { margin-top: 30px; }
         .section-header-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #000; margin-bottom: 12px; }

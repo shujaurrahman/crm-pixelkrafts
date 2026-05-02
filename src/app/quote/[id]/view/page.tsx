@@ -251,7 +251,6 @@ export default function ClientQuotePortal({ params: rawParams }: { params: Promi
                           <span className="m-val">{quote.validUntil}</span>
                         </div>
                         <div className="m-from-block">
-                          <div className="m-from-title">From</div>
                           <div className="m-from-text">{quote.fromDetails || 'Pixelkraft Software Solutions Pvt. Ltd.\nUdyam No: UDYAM-UP-60-0038284'}</div>
                         </div>
                       </div>
@@ -344,7 +343,6 @@ export default function ClientQuotePortal({ params: rawParams }: { params: Promi
                     </div>
                     {quote.notes && (
                       <div className="notes-block">
-                        <div className="notes-title">Note:</div>
                         <div className="notes-text">{quote.notes}</div>
                       </div>
                     )}
@@ -452,8 +450,7 @@ export default function ClientQuotePortal({ params: rawParams }: { params: Promi
         .m-line { font-size: 12px; line-height: 2; color: #000 !important; display: flex; align-items: flex-start; gap: 0; }
         .m-label { width: 110px; flex-shrink: 0; font-weight: 800; display: inline-block; }
         .m-val { font-weight: 700; flex: 1; text-align: left; }
-        .m-from-block { margin-top: 8px; border-top: 1px solid #cbd5e1; padding-top: 8px; }
-        .m-from-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 800; color: #475569 !important; margin-bottom: 4px; }
+        .m-from-block { margin-top: 8px; border-top: 1px dotted #94a3b8; padding-top: 8px; }
         .m-from-text { white-space: pre-wrap; font-size: 11px; line-height: 1.45; font-weight: 700; color: #0f172a !important; }
         
         .subject-box-clean { border-top: 2px solid #000; border-bottom: 2px solid #000; padding: 14px 0; margin-bottom: 32px; font-size: 15px; color: #000 !important; font-weight: 800; text-align: left; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -514,7 +511,6 @@ export default function ClientQuotePortal({ params: rawParams }: { params: Promi
         .words-text { font-size: 10px; font-weight: 700; color: #000; text-transform: capitalize; }
         
         .notes-block { padding: 0; border: none; background: none; }
-        .notes-title { font-size: 9px; font-weight: 800; text-transform: uppercase; color: #64748b; margin-bottom: 2px; letter-spacing: 0.5px; }
         .notes-text { font-size: 9px; font-weight: 600; color: #334155; line-height: 1.4; }
  
         .section-title { font-size: 14px; font-weight: 900; color: #0f172a !important; margin: 40px 0 16px 0; letter-spacing: 1px; border-bottom: 2px solid #0f172a; display: inline-block; padding-bottom: 4px; text-align: left; text-transform: uppercase; }

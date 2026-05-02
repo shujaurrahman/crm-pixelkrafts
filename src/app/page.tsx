@@ -1525,6 +1525,8 @@ export default function Home() {
     }
   };
 
+  const hasQuoteForLead = (leadId: string) => quoteHubRows.some((row) => row.leadId === leadId);
+
   const createInvoice = async (lead: Lead) => {
     setIsInvoiceBusy(true);
     const invoiceAmount = Math.max(0, lead.invoiceBalanceDue ?? getLeadBalanceDue(lead));
@@ -3500,6 +3502,47 @@ export default function Home() {
                     <strong>{value}</strong>
                   </article>
                 ))}
+              </div>
+
+              <div className="mgmt-card" style={{ marginBottom: '24px' }}>
+                <div className="mgmt-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <h3 className="mgmt-card-title">Start a New Quote</h3>
+                    <p className="mgmt-subtitle" style={{ marginBottom: 0 }}>Pick any entered lead and open the quotation editor immediately.</p>
+                  </div>
+                  <button className="btn primary" onClick={() => setTab('enquires')}>Open Enquiries</button>
+                </div>
+                <div className="mgmt-list">
+                  {leads.slice(0, 10).map((lead) => {
+                    const alreadyQuoted = hasQuoteForLead(lead.id);
+                    return (
+                      <div key={lead.id} className="mgmt-list-item">
+                        <div className="mgmt-item-icon" style={{ background: alreadyQuoted ? 'var(--blue-soft)' : 'var(--paper-strong)', color: alreadyQuoted ? 'var(--blue)' : 'var(--muted)' }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
+                        </div>
+                        <div className="mgmt-item-body">
+                          <span className="mgmt-item-name">{lead.clientName}</span>
+                          <span className="mgmt-item-meta">{lead.id} · {lead.brand} · {alreadyQuoted ? `${quoteHubGroups.find((g) => g.leadId === lead.id)?.versionCount || 1} quote(s)` : 'No quotation yet'}</span>
+                        </div>
+                        <div className="mgmt-item-actions">
+                          <button className="btn primary" onClick={() => router.push(`/enquiry/${lead.id}/quote`)}>
+                            {alreadyQuoted ? 'New Version' : 'Create Quote'}
+                          </button>
+                          {alreadyQuoted && (
+                            <button className="btn" onClick={() => router.push(`/quote/${quoteHubGroups.find((g) => g.leadId === lead.id)?.latest.quoteId}/view`)}>
+                              Latest View
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {!leads.length && (
+                    <div className="mgmt-empty">
+                      <p>No leads available yet. Create an enquiry first, then start a quotation from here.</p>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {isQuoteHubLoading ? (
