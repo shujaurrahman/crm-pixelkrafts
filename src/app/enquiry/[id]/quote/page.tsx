@@ -13,6 +13,7 @@ export default function QuotePage() {
   const [lead, setLead] = useState<Lead | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [currentQuoteId, setCurrentQuoteId] = useState<string | null>(null);
   const [products, setProducts] = useState<any[]>([]);
   const [productsByBrand, setProductsByBrand] = useState<any>({});
 
@@ -20,11 +21,12 @@ export default function QuotePage() {
   const [quoteNo, setQuoteNo] = useState(`EQ-${String(id).split('-')[1] || id}-${new Date().getFullYear()}`);
   const [quoteDate, setQuoteDate] = useState(new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }));
   const [validUntil, setValidUntil] = useState('30 Days from date of quotation');
+  const [fromDetails, setFromDetails] = useState('Pixelkraft Software Solutions Pvt. Ltd.\nUdyam No: UDYAM-UP-60-0038284\nA-24, Sector 63, Noida, Uttar Pradesh 201301\nEmail: hello@pixelkrafts.io | Phone: +91 98XXX XXXXX');
   
   const [toAddress, setToAddress] = useState('[Client Name]\n[Company Name / Apartment]\n[Street Address, City, State]\n[Phone/Email]');
   const [subject, setSubject] = useState('Quotation for Pixelkraft Software Solutions - [Project Name]');
   
-  const [notes, setNotes] = useState('Note: Project timelines are subject to timely asset delivery.');
+  const [notes, setNotes] = useState('Note: Timeline and sprint plan start after sign-off on scope and milestone schedule.');
   
   const [items, setItems] = useState<any[]>([
     { id: 1, desc: '[Product Name & Model]\n[Enter technical specifications and mounting type here.]', uom: 'Nos.', qty: 1, rate: 0 },
@@ -35,9 +37,9 @@ export default function QuotePage() {
   const [gstRate, setGstRate] = useState(18);
 
   const [sections, setSections] = useState([
-    { title: 'PROJECT TECHNICAL STACK', items: ['Frontend: React.js / Next.js / TypeScript', 'Backend: Node.js / PostgreSQL / REST API', 'Infrastructure: AWS Cloud / Vercel / Docker', 'Testing: Jest / Cypress / Unit Testing'] },
-    { title: 'SCOPE OF WORK', items: ['Design and Development of digital assets as per approved brief', 'SEO Optimization and technical setup', 'Social Media Management and content calendar execution', 'Monthly performance reporting and strategy refinement'] },
-    { title: 'TERMS & CONDITIONS', items: ['Payment: 50% Advance / 50% on Completion', 'Delivery: Timeline subject to project milestone approval', 'Validity: 30 Days from the date of this quotation', 'Support: 3 Months technical support post-launch'] }
+    { title: 'DELIVERY STACK', items: ['Frontend: React / Next.js / TypeScript', 'Backend: Node.js / APIs / Database integration', 'DevOps: CI/CD setup, deployment pipeline, observability', 'QA: Unit + integration testing with release checklist'] },
+    { title: 'DEFAULT SCOPE OF WORK', items: ['Discovery workshop and solution blueprinting', 'UI/UX implementation with responsive pages', 'Backend module development and API integration', 'Deployment support, handover, and release documentation'] },
+    { title: 'COMMERCIAL TERMS', items: ['Payment Terms: 50% advance, 30% on staging delivery, 20% on production go-live', 'Change Requests outside approved scope are billed separately', 'Validity: 30 days from the date of this quotation', 'Hypercare Support: 30 days post go-live (business hours)'] }
   ]);
 
   const [companySignatory, setCompanySignatory] = useState('Authorized Signatory');
@@ -74,49 +76,62 @@ export default function QuotePage() {
 
   const saveProgress = useCallback(() => {
     const quoteData = {
-      quoteNo, quoteDate, validUntil, toAddress, subject, notes,
+      quoteId: currentQuoteId,
+      quoteNo, quoteDate, validUntil, fromDetails, toAddress, subject, notes,
       items, discountRate, gstRate, sections,
       companySignatory, companyName, clientSignatory, clientStamp,
       subtotal, discountAmount, gstAmount, amountInWords, grandTotal
     };
     localStorage.setItem(`quote_progress_${id}`, JSON.stringify(quoteData));
-  }, [id, quoteNo, quoteDate, validUntil, toAddress, subject, notes, items, discountRate, gstRate, sections, companySignatory, companyName, clientSignatory, clientStamp]);
+  }, [id, currentQuoteId, quoteNo, quoteDate, validUntil, fromDetails, toAddress, subject, notes, items, discountRate, gstRate, sections, companySignatory, companyName, clientSignatory, clientStamp]);
 
-  const syncQuoteToCRM = async () => {
+  const syncQuoteToCRM = async (saveAsNew = false) => {
     try {
       const todayStr = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
       setQuoteDate(todayStr);
 
-      await fetch(`/api/leads/${id}/quote`, {
+      const res = await fetch(`/api/leads/${id}/quote`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          quoteNo, quoteDate: todayStr, validUntil, toAddress, subject, notes,
+          quoteId: saveAsNew ? null : currentQuoteId,
+          quoteNo, quoteDate: todayStr, validUntil, fromDetails, toAddress, subject, notes,
           items, discountRate, gstRate, sections,
           companySignatory, companyName, clientSignatory, clientStamp,
           subtotal, discountAmount, gstAmount, amountInWords,
           grandTotal: Math.round(grandTotal)
         })
       });
+      const payload = await res.json();
+      if (payload?.quoteId) {
+        setCurrentQuoteId(payload.quoteId);
+      }
     } catch (e) {
       console.error('CRM Sync Failed', e);
     }
   };
 
-  const handleManualSave = async () => {
+  const handleManualSave = async (saveAsNew = false) => {
     setIsSaving(true);
     saveProgress();
-    await syncQuoteToCRM();
-    setTimeout(() => { setIsSaving(false); toast.success('Quote synced to CRM successfully!'); }, 600);
+    await syncQuoteToCRM(saveAsNew);
+    setTimeout(() => {
+      setIsSaving(false);
+      toast.success(saveAsNew ? 'New quote version created successfully!' : 'Quote synced to CRM successfully!');
+    }, 600);
   };
 
   useEffect(() => {
     const fetchData = async () => {
       try {
+        const searchParams = new URLSearchParams(window.location.search);
+        const qid = searchParams.get('qid');
+        if (qid) setCurrentQuoteId(qid);
+
         const savedRaw = localStorage.getItem(`quote_progress_${id}`);
         let initialData = savedRaw ? JSON.parse(savedRaw) : null;
 
-        const apiRes = await fetch(`/api/leads/${id}/quote`, { cache: 'no-store' });
+        const apiRes = await fetch(`/api/leads/${id}/quote${qid ? `?qid=${encodeURIComponent(qid)}` : ''}`, { cache: 'no-store' });
         if (apiRes.ok) {
           const apiData = await apiRes.json();
           initialData = apiData;
@@ -124,9 +139,11 @@ export default function QuotePage() {
 
         if (initialData) {
           const todayStr = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+          if (initialData.quoteId) setCurrentQuoteId(initialData.quoteId);
           setQuoteNo(initialData.quoteNo); 
           setQuoteDate(todayStr); 
           setValidUntil(initialData.validUntil);
+          if (initialData.fromDetails) setFromDetails(initialData.fromDetails);
           setToAddress(initialData.toAddress?.startsWith('To,\n') ? initialData.toAddress.replace('To,\n', '') : initialData.toAddress); 
           if (initialData.subject) setSubject(initialData.subject);
           if (initialData.notes) setNotes(initialData.notes);
@@ -239,12 +256,12 @@ export default function QuotePage() {
   const updateSectionItem = (sIdx: number, iIdx: number, val: string) => { const n = [...sections]; n[sIdx].items[iIdx] = val; setSections(n); };
 
   const handlePrint = async () => {
-    await syncQuoteToCRM();
+    await syncQuoteToCRM(false);
     setTimeout(() => { window.print(); }, 100);
   };
 
   const shareOnWhatsApp = () => {
-    const portalUrl = `${window.location.origin}/quote/${id}/view`;
+    const portalUrl = `${window.location.origin}/quote/${currentQuoteId || id}/view`;
     const message = `Hello, please find the quotation for your enquiry (${id}) here: ${portalUrl}`;
     const waUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(waUrl, '_blank');
@@ -425,17 +442,25 @@ export default function QuotePage() {
 
         <div className="toolbar-right">
           <button className="reset-btn" onClick={handleReset} title="Reset to default">Reset</button>
-          <button className={`save-btn ${isSaving ? 'saving' : ''}`} onClick={handleManualSave}>
-            {isSaving ? 'Saving...' : 'Save Progress'}
+          <button className={`save-btn ${isSaving ? 'saving' : ''}`} onClick={() => handleManualSave(false)}>
+            {isSaving ? 'Saving...' : (currentQuoteId ? 'Update Quote' : 'Save Quote')}
           </button>
+          {currentQuoteId && (
+            <button className="save-btn" style={{ borderColor: '#facc15', color: '#facc15' }} onClick={() => handleManualSave(true)}>
+              Save as New
+            </button>
+          )}
           <button className="print-action-btn" onClick={handlePrint}>Print Quote</button>
-            <button className="btn" onClick={() => router.back()}>
+          <button className="view-quote-btn" onClick={() => window.open(`/quote/${currentQuoteId || id}/view`, '_blank')}>
+            View Quote
+          </button>
+          <button className="btn" onClick={() => router.back()}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
               Back
-            </button>
-            <button className="btn danger" onClick={handleLogout}>
-              Sign Out
-            </button>
+          </button>
+          <button className="btn danger" onClick={handleLogout}>
+            Sign Out
+          </button>
           <button className="whatsapp-btn" onClick={shareOnWhatsApp}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: '6px' }}><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 1 1-7.6-11.7 8.38 8.38 0 0 1 3.8.9L21 3l-1.5 5.5Z"/></svg>
             WhatsApp Share
@@ -461,6 +486,10 @@ export default function QuotePage() {
                         <div className="m-line"><strong>Quotation No:</strong> <span contentEditable suppressContentEditableWarning onBlur={e => setQuoteNo(e.currentTarget.innerText)}>{quoteNo}</span></div>
                         <div className="m-line"><strong>Date:</strong> <span>{quoteDate}</span></div>
                         <div className="m-line"><strong>Validity:</strong> <span contentEditable suppressContentEditableWarning onBlur={e => setValidUntil(e.currentTarget.innerText)}>{validUntil}</span></div>
+                        <div className="from-details-block">
+                          <div className="from-title">From</div>
+                          <div className="editable from-details-text" contentEditable suppressContentEditableWarning onBlur={e => setFromDetails(e.currentTarget.innerText)}>{fromDetails}</div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -611,6 +640,8 @@ export default function QuotePage() {
         .save-btn:hover { border-color: #3b82f6; background: rgba(37, 99, 235, 0.05); }
         .print-action-btn { background: #2563eb; color: white; border: none; padding: 10px 28px; border-radius: 8px; font-weight: 800; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4); white-space: nowrap; }
         .print-action-btn:hover { background: #cbd5e1; }
+        .view-quote-btn { background: #f8fafc; color: #0f172a; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 700; cursor: pointer; transition: 0.2s; white-space: nowrap; }
+        .view-quote-btn:hover { background: #e2e8f0; }
         .whatsapp-btn { background: #22c55e; color: white; border: none; padding: 10px 24px; border-radius: 8px; font-weight: 700; cursor: pointer; display: flex; align-items: center; transition: all 0.2s; white-space: nowrap; }
         .whatsapp-btn:hover { background: #16a34a; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3); }
 
@@ -642,6 +673,9 @@ export default function QuotePage() {
         .ref-side { padding: 15px; display: flex; align-items: center; justify-content: center; }
         .meta-justify-box { width: 100%; display: flex; flex-direction: column; gap: 6px; padding: 0 20px; }
         .m-line { display: grid; grid-template-columns: 110px 1fr; font-size: 13px; }
+        .from-details-block { margin-top: 6px; border-top: 1px solid #cbd5e1; padding-top: 8px; }
+        .from-title { font-size: 11px; font-weight: 800; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.03em; }
+        .from-details-text { font-size: 12px; line-height: 1.5; }
         .to-label { font-size: 14px; font-weight: 800; margin-bottom: 8px; }
         .address-val { font-size: 13.5px; line-height: 1.6; font-weight: 500; }
         .editable { outline: none; border: 1px dashed transparent; transition: 0.1s; white-space: pre-wrap; color: #000 !important; }

@@ -14,6 +14,7 @@ export default function EnquiryDetailPage() {
   const [lead, setLead] = useState<Lead | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [quotePreviewUrl, setQuotePreviewUrl] = useState('');
+  const [quoteList, setQuoteList] = useState<any[]>([]);
 
   // Sync theme from localStorage so the detail page matches the dashboard
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -40,6 +41,12 @@ export default function EnquiryDetailPage() {
         if (found) {
           setLead(found);
           setQuotePreviewUrl(found.quoteUrl || '');
+
+          const qRes = await fetch(`/api/leads/${id}/quote?list=true`, { cache: 'no-store' });
+          if (qRes.ok) {
+            const qData = await qRes.json();
+            setQuoteList(Array.isArray(qData.quotes) ? qData.quotes : []);
+          }
         }
         else { toast.error('Enquiry not found'); router.push('/'); }
       } catch { toast.error('Failed to load enquiry details'); }
@@ -110,6 +117,50 @@ export default function EnquiryDetailPage() {
       toast.success('Item removed');
     } catch {
       toast.error('Failed to remove item');
+    }
+  };
+
+  const refreshQuoteList = async () => {
+    const qRes = await fetch(`/api/leads/${id}/quote?list=true`, { cache: 'no-store' });
+    if (!qRes.ok) return;
+    const qData = await qRes.json();
+    const quotes = Array.isArray(qData.quotes) ? qData.quotes : [];
+    setQuoteList(quotes);
+    if (quotes[0]?.quoteId) {
+      setQuotePreviewUrl(`/quote/${quotes[0].quoteId}/view`);
+    }
+  };
+
+  const handleDeleteQuote = async (quoteId: string) => {
+    if (!confirm('Are you sure you want to delete this quotation version?')) return;
+    try {
+      const res = await fetch(`/api/leads/${id}/quote?qid=${quoteId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('delete failed');
+      await refreshQuoteList();
+      toast.success('Quotation deleted');
+    } catch {
+      toast.error('Failed to delete quotation');
+    }
+  };
+
+  const handleCloneQuote = async (quoteId: string) => {
+    try {
+      toast.loading('Cloning quotation...', { id: 'clone' });
+      const sourceRes = await fetch(`/api/leads/${id}/quote?qid=${quoteId}`, { cache: 'no-store' });
+      if (!sourceRes.ok) throw new Error('source not found');
+      const sourceData = await sourceRes.json();
+
+      const cloneRes = await fetch(`/api/leads/${id}/quote?clone=${quoteId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...sourceData, quoteId: null }),
+      });
+      if (!cloneRes.ok) throw new Error('clone failed');
+
+      await refreshQuoteList();
+      toast.success('Quotation cloned successfully', { id: 'clone' });
+    } catch {
+      toast.error('Failed to clone quotation', { id: 'clone' });
     }
   };
 
@@ -199,11 +250,12 @@ export default function EnquiryDetailPage() {
     'Quote Sent': '#8b5cf6', 'Order Confirmed': 'var(--green)', 'Closed Lost': 'var(--danger)',
   };
   const dotColor = statusColors[lead.status] ?? 'var(--muted)';
-  const quoteActionUrl = quotePreviewUrl || lead.quoteUrl || '';
+  const latestQuoteId = quoteList[0]?.quoteId;
+  const quoteActionUrl = (latestQuoteId ? `/quote/${latestQuoteId}/view` : '') || quotePreviewUrl || lead.quoteUrl || '';
   const canViewQuote = Boolean(quoteActionUrl) || lead.status === 'Quote Sent';
 
   const shareOnWhatsApp = () => {
-    const portalUrl = `${window.location.origin}/quote/${lead.id}/view`;
+    const portalUrl = `${window.location.origin}/quote/${latestQuoteId || lead.id}/view`;
     const message = `Hello, please find the quotation for your enquiry (${lead.id}) here: ${portalUrl}`;
     const waUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(waUrl, '_blank');
@@ -253,7 +305,7 @@ export default function EnquiryDetailPage() {
               Generate Quote
             </button>
           ) : (
-             <button className="btn primary" onClick={() => router.push(`/enquiry/${id}/quote`)}>
+             <button className="btn primary" onClick={() => router.push(`/enquiry/${id}/quote${latestQuoteId ? `?qid=${encodeURIComponent(latestQuoteId)}` : ''}`)}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
                 Edit Quote
               </button>
@@ -365,6 +417,40 @@ export default function EnquiryDetailPage() {
               </div>
             </section>
           )}
+
+          <section className="eq-card">
+            <div className="eq-card-head">
+              <h2>Quotation Versions</h2>
+              <button className="btn primary" onClick={() => router.push(`/enquiry/${id}/quote`)}>
+                New Quotation
+              </button>
+            </div>
+
+            {!quoteList.length ? (
+              <div className="eq-empty-quote-state">No quotation versions yet. Create the first quote to start sharing with the client.</div>
+            ) : (
+              <div className="eq-quote-list">
+                {quoteList.map((q, index) => (
+                  <div key={q.quoteId} className="eq-quote-row">
+                    <div className="eq-quote-meta">
+                      <div className="eq-quote-title">{q.quoteNo || q.quoteId}</div>
+                      <div className="eq-quote-sub">
+                        <span>{fmtDate(q.updatedAt || q.date)}</span>
+                        <span>{money(Number(q.grandTotal || 0))}</span>
+                        {index === 0 && <span className="eq-quote-pill">Latest</span>}
+                      </div>
+                    </div>
+                    <div className="eq-quote-actions">
+                      <a className="btn" href={`/quote/${q.quoteId}/view`} target="_blank" rel="noreferrer">View</a>
+                      <button className="btn" onClick={() => router.push(`/enquiry/${id}/quote?qid=${encodeURIComponent(q.quoteId)}`)}>Edit</button>
+                      <button className="btn" onClick={() => handleCloneQuote(q.quoteId)}>Clone</button>
+                      <button className="btn danger" onClick={() => handleDeleteQuote(q.quoteId)}>Delete</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
 
           {/* Contact */}
           <section className="eq-card">
@@ -775,6 +861,71 @@ export default function EnquiryDetailPage() {
         }
         .eq-link:hover { text-decoration: underline; }
 
+        .eq-empty-quote-state {
+          border: 1px dashed var(--line);
+          border-radius: 10px;
+          padding: 16px;
+          font-size: 13px;
+          color: var(--muted);
+          background: var(--paper-strong);
+        }
+
+        .eq-quote-list {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .eq-quote-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 14px;
+          padding: 12px;
+          border: 1px solid var(--line);
+          border-radius: 10px;
+          background: var(--paper-strong);
+        }
+
+        .eq-quote-meta {
+          min-width: 0;
+        }
+
+        .eq-quote-title {
+          font-size: 13px;
+          font-weight: 700;
+          color: var(--text);
+        }
+
+        .eq-quote-sub {
+          margin-top: 4px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          font-size: 11px;
+          color: var(--muted);
+          flex-wrap: wrap;
+        }
+
+        .eq-quote-pill {
+          font-size: 10px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+          color: var(--blue);
+          background: var(--blue-soft);
+          padding: 3px 7px;
+          border-radius: 12px;
+        }
+
+        .eq-quote-actions {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: wrap;
+          justify-content: flex-end;
+        }
+
         /* Notes */
         .eq-notes {
           font-size: 14px;
@@ -992,6 +1143,8 @@ export default function EnquiryDetailPage() {
           .eq-body { grid-template-columns: 1fr; padding: 20px; }
           .eq-header { padding: 20px; flex-direction: column; gap: 16px; }
           .eq-finance-value { font-size: 28px; }
+          .eq-quote-row { flex-direction: column; align-items: flex-start; }
+          .eq-quote-actions { width: 100%; }
         }
 
         @media print {

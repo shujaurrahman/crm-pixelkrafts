@@ -10,7 +10,13 @@ export async function POST(
 ) {
   try {
     const { signature } = await request.json();
-    const { id: leadId } = await context.params;
+    const { id } = await context.params;
+
+    let leadId = id;
+    const quotePayload = await readJsonBlob<any>(`quote_${id}.json`, null);
+    if (quotePayload?.leadId) {
+      leadId = String(quotePayload.leadId);
+    }
 
     // 1. Load Leads
     const leads = await readJsonBlob<Lead[]>(LEADS_BLOB_NAME, LEADS_SEED);

@@ -31,6 +31,7 @@ export default function ClientQuotePortal({ params: rawParams }: { params: Promi
       quoteNo: `${lead?.id || id}`,
       quoteDate: lead?.date || new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
       validUntil: '30 Days from date of quotation',
+      fromDetails: 'Pixelkraft Software Solutions Pvt. Ltd.\nUdyam No: UDYAM-UP-60-0038284\nA-24, Sector 63, Noida, Uttar Pradesh 201301\nEmail: hello@pixelkrafts.io | Phone: +91 98XXX XXXXX',
       toAddress: [lead?.clientName, [lead?.city, lead?.state].filter(Boolean).join(' '), lead?.phone ? `Ph: ${lead.phone}` : '', lead?.email ? `Email: ${lead.email}` : '']
         .filter(Boolean)
         .join('\n'),
@@ -45,9 +46,9 @@ export default function ClientQuotePortal({ params: rawParams }: { params: Promi
       discountRate: 0,
       gstRate: 18,
       sections: [
-        { title: 'PROJECT TECHNICAL STACK', items: ['Frontend: React.js / Next.js / TypeScript', 'Backend: Node.js / PostgreSQL / REST API', 'Infrastructure: AWS Cloud / Vercel / Docker', 'Testing: Jest / Cypress / Unit Testing'] },
-        { title: 'SCOPE OF WORK', items: ['Design and Development of digital assets as per approved brief', 'SEO Optimization and technical setup', 'Social Media Management and content calendar execution', 'Monthly performance reporting and strategy refinement'] },
-        { title: 'TERMS & CONDITIONS', items: ['Payment: 50% Advance / 50% on Completion', 'Delivery: Timeline subject to project milestone approval', 'Validity: 30 Days from the date of this quotation', 'Support: 3 Months technical support post-launch'] }
+        { title: 'DELIVERY STACK', items: ['Frontend: React / Next.js / TypeScript', 'Backend: Node.js / APIs / Database integration', 'DevOps: CI/CD setup, deployment pipeline, observability', 'QA: Unit + integration testing with release checklist'] },
+        { title: 'DEFAULT SCOPE OF WORK', items: ['Discovery workshop and solution blueprinting', 'UI/UX implementation with responsive pages', 'Backend module development and API integration', 'Deployment support, handover, and release documentation'] },
+        { title: 'COMMERCIAL TERMS', items: ['Payment Terms: 50% advance, 30% on staging delivery, 20% on production go-live', 'Change Requests outside approved scope are billed separately', 'Validity: 30 days from the date of this quotation', 'Hypercare Support: 30 days post go-live (business hours)'] }
       ],
       companySignatory: 'Authorized Signatory',
       companyName: 'Pixelkraft Software Solutions',
@@ -248,6 +249,10 @@ export default function ClientQuotePortal({ params: rawParams }: { params: Promi
                           <strong className="m-label">Validity:</strong> 
                           <span className="m-val">{quote.validUntil}</span>
                         </div>
+                        <div className="m-from-block">
+                          <div className="m-from-title">From</div>
+                          <div className="m-from-text">{quote.fromDetails || 'Pixelkraft Software Solutions Pvt. Ltd.\nUdyam No: UDYAM-UP-60-0038284'}</div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -446,6 +451,9 @@ export default function ClientQuotePortal({ params: rawParams }: { params: Promi
         .m-line { font-size: 12px; line-height: 2; color: #000 !important; display: flex; align-items: flex-start; gap: 0; }
         .m-label { width: 110px; flex-shrink: 0; font-weight: 800; display: inline-block; }
         .m-val { font-weight: 700; flex: 1; text-align: left; }
+        .m-from-block { margin-top: 8px; border-top: 1px solid #cbd5e1; padding-top: 8px; }
+        .m-from-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 800; color: #475569 !important; margin-bottom: 4px; }
+        .m-from-text { white-space: pre-wrap; font-size: 11px; line-height: 1.45; font-weight: 700; color: #0f172a !important; }
         
         .subject-box-clean { border-top: 2px solid #000; border-bottom: 2px solid #000; padding: 14px 0; margin-bottom: 32px; font-size: 15px; color: #000 !important; font-weight: 800; text-align: left; text-transform: uppercase; letter-spacing: 0.5px; }
         
