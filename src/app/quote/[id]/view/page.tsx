@@ -213,6 +213,7 @@ export default function ClientQuotePortal({ params: rawParams }: { params: Promi
                   onChange={(e) => setSignature(e.target.value)}
                 />
                 <button className="btn-accept" onClick={handleAccept}>Accept & Sign Quote</button>
+                <button className="btn-print" onClick={() => window.print()}>Download PDF</button>
               </div>
             ) : (
               <button className="btn-print" onClick={() => window.print()}>Download PDF</button>
@@ -304,16 +305,20 @@ export default function ClientQuotePortal({ params: rawParams }: { params: Promi
                             <td className="total-label">SUB TOTAL</td>
                             <td className="total-val">₹{subtotal.toLocaleString('en-IN')}</td>
                           </tr>
-                          <tr>
-                            <td></td><td></td><td></td><td></td>
-                            <td className="total-label">DISCOUNT ({discountRate}%)</td>
-                            <td className="total-val">- ₹{Math.round(discountAmount).toLocaleString('en-IN')}</td>
-                          </tr>
-                          <tr>
-                            <td></td><td></td><td></td><td></td>
-                            <td className="total-label">GST @ {gstRate}%</td>
-                            <td className="total-val">+ ₹{Math.round(gstAmount).toLocaleString('en-IN')}</td>
-                          </tr>
+                          {discountRate > 0 && Math.round(discountAmount) !== 0 && (
+                            <tr>
+                              <td></td><td></td><td></td><td></td>
+                              <td className="total-label">DISCOUNT ({discountRate}%)</td>
+                              <td className="total-val">- ₹{Math.round(discountAmount).toLocaleString('en-IN')}</td>
+                            </tr>
+                          )}
+                          {gstRate > 0 && Math.round(gstAmount) !== 0 && (
+                            <tr>
+                              <td></td><td></td><td></td><td></td>
+                              <td className="total-label">GST @ {gstRate}%</td>
+                              <td className="total-val">+ ₹{Math.round(gstAmount).toLocaleString('en-IN')}</td>
+                            </tr>
+                          )}
                           <tr className="grand-total-row">
                             <td></td><td></td><td></td><td></td>
                             <td className="total-label">GRAND TOTAL</td>
