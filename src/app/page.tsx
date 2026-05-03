@@ -3529,11 +3529,11 @@ export default function Home() {
                           </span>
                         </div>
                         <div className="mgmt-item-actions" style={{ gap: '8px' }}>
-                          <button className="btn primary" style={{ fontSize: '13px' }} onClick={() => router.push(`/enquiry/${lead.id}/quote`)}>
+                          <button className="btn primary" style={{ fontSize: '13px' }} onClick={() => window.open(`/enquiry/${lead.id}/quote`, '_blank', 'noopener,noreferrer')}>
                             {alreadyQuoted ? 'New Version' : '+ Create'}
                           </button>
                           {alreadyQuoted && (
-                            <button className="btn" style={{ fontSize: '13px' }} onClick={() => router.push(`/quote/${quoteGroup?.latest.quoteId}/view`)}>View Latest</button>
+                            <button className="btn" style={{ fontSize: '13px' }} onClick={() => window.open(`/quote/${quoteGroup?.latest.quoteId}/view`, '_blank', 'noopener,noreferrer')}>View Latest</button>
                           )}
                         </div>
                       </div>
@@ -3568,8 +3568,8 @@ export default function Home() {
                             <p style={{ margin: '0', fontSize: '12px', color: 'var(--muted)' }}>{group.status} • Latest {money(group.latest.grandTotal)}</p>
                           </div>
                           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                            <button className="btn primary" style={{ fontSize: '13px', whiteSpace: 'nowrap' }} onClick={() => router.push(`/quote/${group.latest.quoteId}/view`)}>👁 View</button>
-                            <button className="btn" style={{ fontSize: '13px', whiteSpace: 'nowrap' }} onClick={() => router.push(`/enquiry/${group.leadId}/quote?qid=${encodeURIComponent(group.latest.quoteId)}`)}>✎ Edit</button>
+                            <button className="btn primary" style={{ fontSize: '13px', whiteSpace: 'nowrap' }} onClick={() => window.open(`/quote/${group.latest.quoteId}/view`, '_blank', 'noopener,noreferrer')}>👁 View</button>
+                            <button className="btn" style={{ fontSize: '13px', whiteSpace: 'nowrap' }} onClick={() => window.open(`/enquiry/${group.leadId}/quote?qid=${encodeURIComponent(group.latest.quoteId)}`, '_blank', 'noopener,noreferrer')}>✎ Edit</button>
                             <button className="btn" style={{ fontSize: '13px', whiteSpace: 'nowrap' }} onClick={() => cloneQuoteVersion(group.leadId, group.latest.quoteId)}>⎘ Clone</button>
                           </div>
                         </div>
@@ -3590,8 +3590,8 @@ export default function Home() {
                               </span>
                             </div>
                             <div className="mgmt-item-actions" style={{ gap: '6px' }}>
-                              <button className="btn btn-compact" style={{ fontSize: '12px' }} onClick={() => router.push(`/quote/${quote.quoteId}/view`)}>View</button>
-                              <button className="btn btn-compact" style={{ fontSize: '12px' }} onClick={() => router.push(`/enquiry/${group.leadId}/quote?qid=${encodeURIComponent(quote.quoteId)}`)}>Edit</button>
+                              <button className="btn btn-compact" style={{ fontSize: '12px' }} onClick={() => window.open(`/quote/${quote.quoteId}/view`, '_blank', 'noopener,noreferrer')}>View</button>
+                              <button className="btn btn-compact" style={{ fontSize: '12px' }} onClick={() => window.open(`/enquiry/${group.leadId}/quote?qid=${encodeURIComponent(quote.quoteId)}`, '_blank', 'noopener,noreferrer')}>Edit</button>
                               <button className="btn btn-compact" style={{ fontSize: '12px' }} onClick={() => cloneQuoteVersion(group.leadId, quote.quoteId)}>Clone</button>
                               <button
                                 className="btn btn-compact"

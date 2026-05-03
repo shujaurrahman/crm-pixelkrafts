@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Lead } from '@/lib/crm-data';
 import { toast } from 'sonner';
@@ -16,6 +16,10 @@ export default function QuotePage() {
   const [currentQuoteId, setCurrentQuoteId] = useState<string | null>(null);
   const [products, setProducts] = useState<any[]>([]);
   const [productsByBrand, setProductsByBrand] = useState<any>({});
+  const [productSuggestions, setProductSuggestions] = useState<Record<number, any[]>>({});
+  const [activeSuggestionItemId, setActiveSuggestionItemId] = useState<number | null>(null);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // --- Editable Data State ---
   const [docTitle, setDocTitle] = useState('QUOTATION');
@@ -117,6 +121,7 @@ export default function QuotePage() {
   const handleManualSave = async (saveAsNew = false) => {
     setIsSaving(true);
     saveProgress();
+    setAutoSaveStatus('saved');
     await syncQuoteToCRM(saveAsNew);
     setTimeout(() => {
       setIsSaving(false);
@@ -187,7 +192,41 @@ export default function QuotePage() {
     fetchData();
   }, [id]);
 
-  useEffect(() => { if (!isLoading) saveProgress(); }, [saveProgress, isLoading]);
+  useEffect(() => {
+    if (isLoading) return;
+
+    setAutoSaveStatus('saving');
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+
+    autoSaveTimerRef.current = setTimeout(() => {
+      saveProgress();
+      setAutoSaveStatus('saved');
+      autoSaveTimerRef.current = null;
+    }, 500);
+
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+    };
+  }, [saveProgress, isLoading]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const isSaveShortcut = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's';
+      if (!isSaveShortcut) return;
+
+      event.preventDefault();
+      if (isSaving) return;
+      void handleManualSave(false);
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isSaving, handleManualSave]);
+
   useEffect(() => { document.title = quoteNo; }, [quoteNo]);
 
   const toggleBold = () => document.execCommand('bold', false);
@@ -196,50 +235,101 @@ export default function QuotePage() {
     const nextId = items.length > 0 ? Math.max(...items.map(i => i.id)) + 1 : 1;
     setItems([...items, { id: nextId, desc: '[New Product Name]\n[Technical details]', uom: 'Nos.', qty: 1, rate: 0 }]);
   };
-  const removeItem = (id: number) => setItems(items.filter(i => i.id !== id));
+  const removeItem = (id: number) => {
+    setItems(items.filter(i => i.id !== id));
+    setProductSuggestions((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    if (activeSuggestionItemId === id) setActiveSuggestionItemId(null);
+  };
   const updateItem = (id: number, field: string, value: any) => {
-    const updated = items.map(i => i.id === id ? { ...i, [field]: value } : i);
-    setItems(updated);
+    setItems(items.map(i => i.id === id ? { ...i, [field]: value } : i));
+  };
 
-    // If description changed, check for product match
-    if (field === 'desc') {
-      const match = products.find(p => p.title.toLowerCase() === value.split('\n')[0].trim().toLowerCase());
-      if (match) {
-        let finalDesc = `${match.title}\n${match.detail}`;
-        if (match.stockStatus === 'Out of Stock') {
-          finalDesc += `\n[NOTE: Currently Out of Stock]`;
-        } else if (match.stockStatus === 'Lead Time') {
-          finalDesc += `\n[Lead Time: ${match.leadTime || 'Contact for info'}]`;
-        } else if (match.stockStatus === 'Limited Stock') {
-          finalDesc += `\n[Limited Stock Available]`;
+  const buildProductDescription = (product: any) => {
+    let finalDesc = `${product.title}\n${product.detail}`;
+    if (product.stockStatus === 'Out of Stock') {
+      finalDesc += `\n[NOTE: Currently Out of Stock]`;
+    } else if (product.stockStatus === 'Lead Time') {
+      finalDesc += `\n[Lead Time: ${product.leadTime || 'Contact for info'}]`;
+    } else if (product.stockStatus === 'Limited Stock') {
+      finalDesc += `\n[Limited Stock Available]`;
+    }
+    return finalDesc;
+  };
+
+  const getClosestProducts = useCallback((query: string, limit = 5) => {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) return [];
+
+    const scored = products
+      .map((product) => {
+        const title = String(product.title || '').toLowerCase();
+        const detail = String(product.detail || '').toLowerCase();
+        let score = 0;
+
+        if (title === normalizedQuery) score += 100;
+        if (title.startsWith(normalizedQuery)) score += 60;
+        if (title.includes(normalizedQuery)) score += 35;
+        if (detail.includes(normalizedQuery)) score += 12;
+
+        const qWords = normalizedQuery.split(/\s+/).filter(Boolean);
+        for (const word of qWords) {
+          if (title.includes(word)) score += 8;
+          if (detail.includes(word)) score += 3;
         }
-        
-        setItems(items.map(i => i.id === id ? { ...i, desc: finalDesc, rate: match.unitPrice } : i));
-        toast.success(`Matched: ${match.title} (${match.stockStatus})`);
-      }
+
+        return { product, score };
+      })
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit)
+      .map((entry) => entry.product);
+
+    return scored;
+  }, [products]);
+
+  const applyRecommendedProduct = (id: number, product: any) => {
+    const finalDesc = buildProductDescription(product);
+    setItems(items.map(i => i.id === id ? { ...i, desc: finalDesc, rate: product.unitPrice } : i));
+    setProductSuggestions((prev) => ({ ...prev, [id]: [] }));
+    setActiveSuggestionItemId(null);
+    toast.success(`Selected: ${product.title}`);
+  };
+
+  const handleProductInputChange = (id: number, value: string) => {
+    updateItem(id, 'desc', value);
+    const query = value.split('\n')[0].trim();
+
+    if (!query || query.startsWith('[')) {
+      setProductSuggestions((prev) => ({ ...prev, [id]: [] }));
+      if (activeSuggestionItemId === id) setActiveSuggestionItemId(null);
+      return;
+    }
+
+    const closest = getClosestProducts(query, 5);
+    setProductSuggestions((prev) => ({ ...prev, [id]: closest }));
+    setActiveSuggestionItemId(closest.length ? id : null);
+  };
+
+  const handleProductFocus = (id: number, value: string) => {
+    const query = value.split('\n')[0].trim();
+    if (!query || query.startsWith('[')) return;
+
+    const closest = getClosestProducts(query, 5);
+    if (closest.length) {
+      setProductSuggestions((prev) => ({ ...prev, [id]: closest }));
+      setActiveSuggestionItemId(id);
     }
   };
 
-  const handleProductBlur = (id: number, value: string) => {
-    // Only match products from library; don't auto-add
-    const title = value.split('\n')[0].trim();
-    if (!title || title.startsWith('[') || title === 'New Product') return;
-
-    const match = products.find(p => p.title.toLowerCase() === title.toLowerCase());
-    if (match) {
-      // Product found in library - auto-populate with details
-      let finalDesc = `${match.title}\n${match.detail}`;
-      if (match.stockStatus === 'Out of Stock') {
-        finalDesc += `\n[NOTE: Currently Out of Stock]`;
-      } else if (match.stockStatus === 'Lead Time') {
-        finalDesc += `\n[Lead Time: ${match.leadTime || 'Contact for info'}]`;
-      } else if (match.stockStatus === 'Limited Stock') {
-        finalDesc += `\n[Limited Stock Available]`;
-      }
-      setItems(items.map(i => i.id === id ? { ...i, desc: finalDesc, rate: match.unitPrice } : i));
-      toast.success(`Matched: ${match.title}`);
-    }
-    // If no match found, do nothing - user can manually type or select from dropdown
+  const handleProductBlur = (id: number) => {
+    // Delay allows click on suggestion without closing immediately.
+    setTimeout(() => {
+      setActiveSuggestionItemId((current) => (current === id ? null : current));
+    }, 140);
   };
 
   const addSection = () => setSections([...sections, { title: 'NEW SECTION HEADING', items: ['New list item...'] }]);
@@ -434,6 +524,9 @@ export default function QuotePage() {
         </div>
 
         <div className="toolbar-right">
+          <div className={`autosave-pill ${autoSaveStatus}`}>
+            {autoSaveStatus === 'saving' ? 'Saving...' : 'Saved'}
+          </div>
           <button className="reset-btn" onClick={handleReset} title="Reset to default">Reset</button>
           <button className={`save-btn ${isSaving ? 'saving' : ''}`} onClick={() => handleManualSave(false)}>
             {isSaving ? 'Saving...' : (currentQuoteId ? 'Update Quote' : 'Save Quote')}
@@ -446,10 +539,6 @@ export default function QuotePage() {
           <button className="print-action-btn" onClick={handlePrint}>Print Quote</button>
           <button className="view-quote-btn" onClick={() => window.open(`/quote/${currentQuoteId || id}/view`, '_blank')}>
             View Quote
-          </button>
-          <button className="btn" onClick={() => router.back()}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-              Back
           </button>
           <button className="btn danger" onClick={handleLogout}>
             Sign Out
@@ -514,11 +603,34 @@ export default function QuotePage() {
                           <input 
                             className="editable-area"
                             value={item.desc}
-                            onChange={e => updateItem(item.id, 'desc', e.target.value)}
-                            onBlur={e => handleProductBlur(item.id, e.target.value)}
-                            list="products-datalist"
+                            onChange={e => handleProductInputChange(item.id, e.target.value)}
+                            onFocus={e => handleProductFocus(item.id, e.target.value)}
+                            onBlur={() => handleProductBlur(item.id)}
                             autoComplete="off"
                           />
+                          {activeSuggestionItemId === item.id && (productSuggestions[item.id] || []).length > 0 && (
+                            <div className="product-suggestion-box no-print">
+                              <div className="product-suggestion-title">Closest matches</div>
+                              <div className="product-suggestion-list">
+                                {(productSuggestions[item.id] || []).map((product) => (
+                                  <button
+                                    key={`${item.id}-${product.code}`}
+                                    type="button"
+                                    className="product-suggestion-item"
+                                    onMouseDown={(e) => {
+                                      e.preventDefault();
+                                      applyRecommendedProduct(item.id, product);
+                                    }}
+                                  >
+                                    <span className="product-suggestion-name">{product.title}</span>
+                                    <span className="product-suggestion-meta">
+                                      {product.stockStatus || 'In Stock'} · ₹{Number(product.unitPrice || 0).toLocaleString('en-IN')}
+                                    </span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </td>
                         <td className="center"><div contentEditable suppressContentEditableWarning onBlur={e => updateItem(item.id, 'uom', e.currentTarget.innerText)}>{item.uom}</div></td>
                         <td className="center"><input type="number" value={item.qty || ''} onChange={e => updateItem(item.id, 'qty', Number(e.target.value))} placeholder="0" /></td>
@@ -626,6 +738,31 @@ export default function QuotePage() {
         .input-with-symbol input { background: transparent; border: none; color: white; width: 45px; font-size: 13px; font-weight: 700; outline: none; text-align: center; }
         
         .toolbar-right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+        .autosave-pill {
+          border: 1px solid #1e293b;
+          border-radius: 999px;
+          padding: 6px 10px;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.2px;
+          white-space: nowrap;
+          transition: 0.2s;
+        }
+        .autosave-pill.saving {
+          color: #facc15;
+          border-color: #facc15;
+          background: rgba(250, 204, 21, 0.12);
+        }
+        .autosave-pill.saved {
+          color: #22c55e;
+          border-color: #22c55e;
+          background: rgba(34, 197, 94, 0.1);
+        }
+        .autosave-pill.idle {
+          color: #94a3b8;
+          border-color: #334155;
+          background: rgba(51, 65, 85, 0.2);
+        }
         .reset-btn { background: transparent; color: #64748b; border: 1px solid #1e293b; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; font-size: 13px; white-space: nowrap; }
         .reset-btn:hover { border-color: #ef4444; color: #ef4444; background: rgba(239, 68, 68, 0.05); }
         .save-btn { background: #000; color: #3b82f6; border: 1px solid #1e293b; padding: 10px 24px; border-radius: 8px; font-weight: 700; cursor: pointer; transition: 0.2s; white-space: nowrap; }
@@ -776,15 +913,64 @@ export default function QuotePage() {
         .editable-area:hover, .editable-area:focus {
           background: #fef9c3;
         }
+
+        .product-suggestion-box {
+          position: absolute;
+          top: calc(100% + 6px);
+          left: 0;
+          right: 0;
+          background: #fff;
+          border: 1px solid #dbeafe;
+          border-radius: 10px;
+          box-shadow: 0 8px 24px rgba(15, 23, 42, 0.16);
+          z-index: 50;
+          overflow: hidden;
+        }
+        .product-suggestion-title {
+          font-size: 10px;
+          text-transform: uppercase;
+          letter-spacing: 0.8px;
+          font-weight: 800;
+          color: #1d4ed8;
+          background: #eff6ff;
+          padding: 7px 10px;
+          border-bottom: 1px solid #dbeafe;
+        }
+        .product-suggestion-list {
+          max-height: 220px;
+          overflow-y: auto;
+        }
+        .product-suggestion-item {
+          width: 100%;
+          border: none;
+          background: #fff;
+          padding: 9px 10px;
+          text-align: left;
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
+          cursor: pointer;
+          border-bottom: 1px solid #f1f5f9;
+        }
+        .product-suggestion-item:last-child {
+          border-bottom: none;
+        }
+        .product-suggestion-item:hover {
+          background: #f8fafc;
+        }
+        .product-suggestion-name {
+          font-size: 12px;
+          font-weight: 700;
+          color: #0f172a;
+          line-height: 1.35;
+        }
+        .product-suggestion-meta {
+          font-size: 10px;
+          color: #64748b;
+          font-weight: 600;
+        }
         .loading { height: 100vh; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; font-weight: 900; }
       `}</style>
-      <datalist id="products-datalist">
-        {products.map(p => (
-          <option key={p.code} value={p.title}>
-            {p.detail} | {p.stockStatus}{p.stockStatus === 'Lead Time' ? ` (${p.leadTime})` : ''} | ₹{p.unitPrice}
-          </option>
-        ))}
-      </datalist>
     </div>
   );
 }
