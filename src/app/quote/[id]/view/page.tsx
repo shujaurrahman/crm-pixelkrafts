@@ -16,6 +16,7 @@ export default function ClientQuotePortal({ params: rawParams }: { params: Promi
   const [signature, setSignature] = useState('');
   const [acceptedDate, setAcceptedDate] = useState('');
   const [letterhead, setLetterhead] = useState('');
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   const buildFallbackQuote = (lead: any) => {
     const itemsSource = Array.isArray(lead?.enquiryItems) && lead.enquiryItems.length
@@ -135,6 +136,57 @@ export default function ClientQuotePortal({ params: rawParams }: { params: Promi
     }
   };
 
+  const handleDownloadPdf = async () => {
+    if (isDownloadingPdf) return;
+
+    try {
+      setIsDownloadingPdf(true);
+      toast.loading('Preparing PDF...', { id: 'pdf-download' });
+
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ]);
+
+      const pages = Array.from(document.querySelectorAll<HTMLElement>('.document-canvas .a4-page'));
+      if (!pages.length) {
+        throw new Error('No quote pages found to export.');
+      }
+
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+        compress: true,
+      });
+
+      for (let i = 0; i < pages.length; i++) {
+        const page = pages[i];
+        const canvas = await html2canvas(page, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff',
+          windowWidth: page.scrollWidth,
+          windowHeight: page.scrollHeight,
+        });
+
+        const imageData = canvas.toDataURL('image/png', 1.0);
+        if (i > 0) pdf.addPage();
+        pdf.addImage(imageData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
+      }
+
+      const safeQuoteNo = String(quote?.quoteNo || `quote-${id}`).replace(/[^a-z0-9-_]+/gi, '-');
+      pdf.save(`${safeQuoteNo}.pdf`);
+      toast.success('PDF downloaded successfully.', { id: 'pdf-download' });
+    } catch (error) {
+      console.error('PDF download failed:', error);
+      toast.error('Could not generate PDF. Please try again.', { id: 'pdf-download' });
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
+
   const paginatedProductChunks = useMemo(() => {
     if (!quote) return [];
     const chunks = []; let curr = [...quote.items];
@@ -213,10 +265,14 @@ export default function ClientQuotePortal({ params: rawParams }: { params: Promi
                   onChange={(e) => setSignature(e.target.value)}
                 />
                 <button className="btn-accept" onClick={handleAccept}>Accept & Sign Quote</button>
-                <button className="btn-print" onClick={() => window.print()}>Download PDF</button>
+                <button className="btn-print" onClick={handleDownloadPdf} disabled={isDownloadingPdf}>
+                  {isDownloadingPdf ? 'Downloading...' : 'Download PDF'}
+                </button>
               </div>
             ) : (
-              <button className="btn-print" onClick={() => window.print()}>Download PDF</button>
+              <button className="btn-print" onClick={handleDownloadPdf} disabled={isDownloadingPdf}>
+                {isDownloadingPdf ? 'Downloading...' : 'Download PDF'}
+              </button>
             )}
           </div>
         </div>
@@ -434,6 +490,10 @@ export default function ClientQuotePortal({ params: rawParams }: { params: Promi
         .btn-print { 
           background: white; color: #0f172a; border: 1px solid #e2e8f0; 
           padding: 8px 18px; border-radius: 6px; font-weight: 600; font-size: 12px; cursor: pointer;
+        }
+        .btn-print:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
         }
 
         .document-canvas { display: flex; flex-direction: column; align-items: center; gap: 32px; padding: 48px 0; }
