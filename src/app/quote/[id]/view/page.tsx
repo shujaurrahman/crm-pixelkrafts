@@ -139,6 +139,13 @@ export default function ClientQuotePortal({ params: rawParams }: { params: Promi
   const handleDownloadPdf = async () => {
     if (isDownloadingPdf) return;
 
+    const A4_WIDTH_MM = 210;
+    const A4_HEIGHT_MM = 297;
+    const A4_WIDTH_PX = 794;
+    const A4_HEIGHT_PX = 1123;
+
+    let exportRoot: HTMLDivElement | null = null;
+
     try {
       setIsDownloadingPdf(true);
       toast.loading('Preparing PDF...', { id: 'pdf-download' });
@@ -148,11 +155,47 @@ export default function ClientQuotePortal({ params: rawParams }: { params: Promi
         import('jspdf'),
       ]);
 
-      const pages = Array.from(document.querySelectorAll<HTMLElement>('.document-canvas .a4-page'));
-      if (!pages.length) {
+      const sourcePages = Array.from(document.querySelectorAll<HTMLElement>('.document-canvas .a4-page'));
+      if (!sourcePages.length) {
         throw new Error('No quote pages found to export.');
       }
 
+      if (document.fonts?.ready) {
+        await document.fonts.ready;
+      }
+
+      exportRoot = document.createElement('div');
+      exportRoot.style.position = 'fixed';
+      exportRoot.style.left = '-100000px';
+      exportRoot.style.top = '0';
+      exportRoot.style.width = `${A4_WIDTH_PX}px`;
+      exportRoot.style.background = '#ffffff';
+      exportRoot.style.zIndex = '-1';
+      exportRoot.style.pointerEvents = 'none';
+      exportRoot.style.opacity = '1';
+
+      sourcePages.forEach((page) => {
+        const clone = page.cloneNode(true) as HTMLElement;
+        clone.style.width = `${A4_WIDTH_PX}px`;
+        clone.style.height = `${A4_HEIGHT_PX}px`;
+        clone.style.margin = '0';
+        clone.style.boxShadow = 'none';
+        clone.style.borderRadius = '0';
+        clone.style.backgroundColor = '#ffffff';
+        clone.style.backgroundSize = '100% 100%';
+
+        const canvasWrapper = clone.querySelector<HTMLElement>('.page-content');
+        if (canvasWrapper) {
+          canvasWrapper.style.height = '100%';
+          canvasWrapper.style.boxSizing = 'border-box';
+        }
+
+        exportRoot?.appendChild(clone);
+      });
+
+      document.body.appendChild(exportRoot);
+
+      const clonedPages = Array.from(exportRoot.querySelectorAll<HTMLElement>('.a4-page'));
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
@@ -160,20 +203,24 @@ export default function ClientQuotePortal({ params: rawParams }: { params: Promi
         compress: true,
       });
 
-      for (let i = 0; i < pages.length; i++) {
-        const page = pages[i];
+      for (let i = 0; i < clonedPages.length; i++) {
+        const page = clonedPages[i];
         const canvas = await html2canvas(page, {
           scale: 2,
           useCORS: true,
           logging: false,
           backgroundColor: '#ffffff',
-          windowWidth: page.scrollWidth,
-          windowHeight: page.scrollHeight,
+          width: A4_WIDTH_PX,
+          height: A4_HEIGHT_PX,
+          windowWidth: A4_WIDTH_PX,
+          windowHeight: A4_HEIGHT_PX,
+          scrollX: 0,
+          scrollY: 0,
         });
 
         const imageData = canvas.toDataURL('image/png', 1.0);
         if (i > 0) pdf.addPage();
-        pdf.addImage(imageData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
+        pdf.addImage(imageData, 'PNG', 0, 0, A4_WIDTH_MM, A4_HEIGHT_MM, undefined, 'FAST');
       }
 
       const safeQuoteNo = String(quote?.quoteNo || `quote-${id}`).replace(/[^a-z0-9-_]+/gi, '-');
@@ -183,6 +230,9 @@ export default function ClientQuotePortal({ params: rawParams }: { params: Promi
       console.error('PDF download failed:', error);
       toast.error('Could not generate PDF. Please try again.', { id: 'pdf-download' });
     } finally {
+      if (exportRoot && exportRoot.parentNode) {
+        exportRoot.parentNode.removeChild(exportRoot);
+      }
       setIsDownloadingPdf(false);
     }
   };
